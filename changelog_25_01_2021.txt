@@ -1,0 +1,82 @@
+
+-- Compilador --
+ 
+Adicionado:
+  -> Suporte a arquivos no formato .vb (se reconhecidos como se fossem arquivos NBS comuns).
+
+  -> Suporte a variaveis fixed (ponto fixo) para representar valores menores do que 1
+	* É possivel representar um valor 'Unsigned' entre 0.00 e 511.99
+	* O compilador faz a conversão automatica da variavel quando diferentes data types são usados na mesma equação, então variaveis fixed são convertidas para inteiros e vice-versa quando necessario
+	 sendo que a referencia é sempre o data type da variavel onde o resultado sera salvo Ex.:
+		dim int_var as integer = fixed_var ' fixed_var é convertida para inteiro antes de ser salva em int_var
+		dim fixed_var as fixed = int_var   ' int_var é convertida pra fixed antes de ser salva em fixed_var
+	
+	 A conversão é feita sempre descartando o valor apos o ponto no Momento em que a variavel é acessada Ex.:
+	   dim _fixed_1 as fixed = 3.5
+	   dim _fixed_2 as fixed = 8.5
+	   
+	   dim var_int as integer = _fixed_1 + _fixed_2 ' Neste caso o valor salvo em var_int é 11, resultado de 8 + 3
+	   
+	   Para preservar o calculo usando o data ype original das variaveis que compões a equação, neste caso, pode se usar a função _fixed(), assim o compilador vai calcular a equação
+	   usando a matematica de ponto fixo e converterá o Resultado retornado pela função para inteiro antes de salvar na variavelde destino.
+	   
+	   dim var_int as integer = _fixed( _fixed_1 + _fixed_2 ) '  Neste caso o valor salvo em var_int é 12, resultado de 8.5 + 3.5
+		
+	  A conversão automatica de valores Não é aplicada a operadores Bitwise (AND, OR, XOR, ~, <<, >>, etc.) apenas a operadores matematicos (+, -, *, /) e de comparação (= , > , <> , >=, etc.)
+	  
+  -> Diretivas para o comando "import" que permitem controlar o alinhamento, a posição e o endereço absoluto dos arquivos importado como binarios na hora da compilação
+	  -o Para inserir o arquivo importado num endereço absoluto de memoria especificado em Hexadecimal
+	  -e Força o alinhamento do arquivo importado com um endereço par de memoria
+	  -u Força o alinhamento dos dados após o arquivo importado com um endereço par de memoria
+	  -f Envia o arquivo importado para o final do source file
+	  -a alinha o arquivo importado com um endereço especificado pelo programador
+	  
+	  Ex.:
+    	  import "\data.bin , -o 4FFFF , -u " ' Importa o arquivo data.bin no endereço absoluto $4ffff e força o alinhamento dos dados apos esse arquivo com um endereço par da memoria
+
+  -> Parametros por referencia em funções/subrotinas
+	 *  Agora é possivel passar parametros por referencia, um parametro por referencia pode ser acessado como uma variavel simples ou como vetor unidimensional Ex.
+	 
+	 dim _m[10] as integer ' Declara uma Matriz -m com 10 elementos unsigned integer
+	 
+	 subrotina(_m) 'Apos a execução dessa linha o elemento 5 da matriz _m tera o valor 10 salvo
+	 
+	 sub subrotina(byref vec_ as integer) ' Recebe um valor inteiro por Referencia
+	  vec_[5] = 10                        ' Salva o valor 10 no Quinto Elemento do valor recebido por referencia
+	 end sub							  ' Fim da subrotina
+  
+  -> Função Addressof() agora pode enxergar o endereço de elementos de matrizes( _m[10] ), elementos de matrizes enum ( _m.x ) e sub elementos de matrizes  de matrizes indexadas( _m[10].x )
+   
+
+Bugs Corrigidos:
+  -> Bug Variaveis declaradas como Global eram incluidas varias vezes no source
+  -> Bug com Erro nos comentarios e Labels do statement 'for' 'step'
+  -> Bug que impedia o Addressof() de funcionar para matrizes locais
+  -> Bug no alinhamento do Stack com endereços pares ao declarar variaveis locais do tipo byte
+  -> Bug if then else 'inline' executava sempre as duas condições independente do resultado da expressão analisada 
+  -> Bug ao acessar strings constantes (Erro de label não definido)
+  -> Bug todos os strings constantes tinham suas letras mudadas para minusculo na hora da compilação
+  -> Bug ao usar o comando Return dentro de uma subrotina ou função, a intrução unlk sempre era inserida (mesmo que não necessaria), gerando Bugs no alinhamento do Stack
+Bugs Conhecidos:
+
+	-> Operações LongWord de divisão e multiplicação não são possiveis devido a limitações do próprio MC68000 (exceto por potencias de 2 já uqe nesse caso o calculo pode ser realizado com operadores Bitwise)
+	-> Expressões matematicas muito grandes com operadores associativos (principalmente a Subtração e comparação) podem gerar um bug por exigirem mais 
+        registradores do que o processador tem disponivel, neste caso a compilação vai falhar e a mensagem indicando o overflow no uso de registradores vai aparecer
+        no LOG do sistema.
+Ex:
+   x = a - b - c - d - e - f - i  ' Gera erro de compilação
+
+  Uma maneira de evitar esse problema é cascatear as operações usando parenteses para que não sejam necessarios mais de 7 registradores
+
+  x = ((a - b) - c ) - d - e - f - i ' Não gera erro de compilação
+  
+  
+  
+--- IDE ---
+  
+ Adicionado:
+  
+    -> Botoões de avançar e retroceder nas buscas
+	-> Sintax Highlight atualizado para incluir as novas funções do sistema/novos data types
+	
+	

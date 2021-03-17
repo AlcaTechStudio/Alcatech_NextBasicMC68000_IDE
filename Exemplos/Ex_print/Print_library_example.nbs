@@ -1,0 +1,23 @@
+imports "\system\genesis_header.asm" ' Header de uma ROM de Mega Drive Padrão (deve ficar sempre no topo)
+
+
+std_init()   'Inicializa o VDP com a configuração padrão
+print_init() 'Inicializa a Biblioteca print e carrega a fonte no endereço 0 ~ 255 da Vram
+
+dim _v_fixed as fixed = 17.56              'Declara uma variavel Fixed
+dim _v_int   as integer = 77               'Declara uma variavel Inteira
+dim _v_sig   as signed integer = -385      'Declara uma variavel inteira Signed
+dim _str_    as string = "-- NEXTBasic --" 'Declara um String Constante e salva o Endereço na variavel _str_
+
+println(_str_) : println("")
+print("  Fixed pt:  ") : print_fixed(_v_fixed) : Println("") : Println("") 'Imprime a variavel Fixed
+print("  Integer :  ") : print_var(_v_int)     : Println("") : Println("") 'Imprime a Varivavel Inteira
+print("  Signed  :  ") : print_signed(_v_sig)  : Println("") : Println("") 'Imprime a variavel inteira Signed
+print("  Long Hex:  ") : print_hex(ram_pointer)                            'Imprime um valor em HexaDecimal
+'PS: A variavel Ram_Pointer é um long criada automaticamente e armazena o endereço do final da tabela de variaveis globais (endereço de inicio da RAM livre) 
+do : loop
+
+
+
+imports "\system\genesis_std.nbs" ' Biblioteca contendo funções standard do Mega Drive NTSC
+imports "\system\print_lib.nbs"   ' Biblioteca contendo funções necessarias para imprimir texto na tela 

@@ -1,0 +1,68 @@
+imports"\system\genesis_header.asm" ' Header de uma ROM de mega Drive Padrão (deve ficar sempre no topo)
+
+' Inicializa o VDP
+std_init()
+
+' Carrega os tiles e a paleta de cores para a VRAM e CRAM
+load_tiles_dma(addressof(tiles),1338,1)
+load_cram_dma(addressof(paleta),32,0)
+
+' Desenha a imagem na Tela
+for y = 0 to 28
+ for x = 0 to 40
+ draw_tile( peek(addressof(map_A) + ((x + (y*40))*2) as word) + 1, x,y, Plane_A)
+ next 
+next  
+for y = 0 to 28
+ for x = 0 to 40
+ draw_tile( (peek(addressof(map_B) + ((x + (y*40))*2) as word) or palette_1 )+ 1, x,y, Plane_B)
+ next 
+next  
+
+' Inicializa o DAC
+poke(&H2B as byte, &hA04000)
+while(bit_test(peek(&hA04000 as byte),7)) _asm("nop")
+poke(&H80 as byte, &hA04001)
+poke(&HB6 as byte, &hA04002)
+while(bit_test(peek(&hA04000 as byte),7)) _asm("nop")
+poke(&HC0 as byte, &hA04003)
+poke(&H2A as byte, &hA04000)
+
+Do 'main
+
+' Faz o Streaming do arquivo WAV de audio
+dim k as long = 0
+for k=1 to (addressof(wave_end) - addressof(wave))  
+ while(bit_test(peek(&hA04000 as byte),7)) _asm("nop")  ' Espera o DAC responder
+ poke(peek(addressof(wave)+k as byte) as byte,&hA04001) ' Lê o proximo Byte e envia para o DAC
+ while( not( peek(&hC00004 as word) and 4)) _asm("nop") ' Espera o proximo Hblank ( ~13,4Khz)
+next
+
+Loop ' Laço infinito
+
+
+
+imports"\system\genesis_std.nbs" ' Biblioteca contendo funções standard do Mega Drive
+
+' Arquivo Wav 
+wave:
+imports "\Ievan_Polkka.bin"
+wave_end:
+
+
+' Tiles, Tile Maps e paleta de cores 
+tiles:
+imports "\tile_data.bin" '1338 tiles
+map_A:
+imports "\tile_mapA.bin"
+map_B:
+imports "\tile_mapB.bin"
+paleta:
+	DATAINT	&h0000,&h0000,&h0222,&h0002,&h0224,&h0026,&h0422,&h0226	' Pallette #0
+	DATAINT	&h0248,&h0444,&h024C,&h0446,&h0668,&h068A,&h0888,&h066C
+	DATAINT	&h0000,&h046A,&h0468,&h048E,&h08AC,&h0644,&h0AA8,&h0864	' Pallette #1
+	DATAINT	&h0866,&h0AAC,&h0EEE,&h04AE,&h06AE,&h08CE,&h04CE,&h0A64
+
+
+
+

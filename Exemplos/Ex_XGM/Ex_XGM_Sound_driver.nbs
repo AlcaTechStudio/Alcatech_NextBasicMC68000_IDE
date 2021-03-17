@@ -1,0 +1,34 @@
+imports"\system\genesis_header.asm" ' Header de uma ROM de mega Drive Padrão (deve ficar sempre no topo)
+
+
+std_init()
+
+'[...] O que for colocado aqui sera executado apenas uma vez
+
+'Inicializa o Driver
+xgm_init() ' Essa Rotina tambem carrega o Logo da XGM na posição 1 - 172 da Vram e o exibe por 180 Frames (3 seg.)
+set_pcmid(64)
+xgm_startPlayMusic(addressof(XGMsong))
+
+
+' Desenha o Logo na tela definitivamente
+for y=0 to 9
+ for x=0 to 19
+ draw_tile(x + (y*19)+1,x+10,y+10,Plane_A)
+ next
+next
+
+enable_global_int() ' Liga as interrupções Globais (Necessario para o XGM)
+
+Do 'main
+Loop ' Laço infinito
+
+sub isr_Vblank()
+ xgm_vintProcess() ' Lida com o XGM Driver
+end sub
+
+imports "\system\genesis_std.nbs" ' Biblioteca contendo funções standard do Mega Drive
+imports "\system\XGM_Driver.nbs"  ' Biblioteca XGM
+
+XGMsong:
+imports "\sor2.xgc,-a 256" 'Importa o arquivo de som e alinha ele a um endereço multiplo de 256 na memoria

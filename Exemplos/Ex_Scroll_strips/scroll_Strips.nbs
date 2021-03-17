@@ -1,0 +1,87 @@
+imports"\system\genesis_header.asm" ' Header de uma ROM de mega Drive Padrão 
+
+
+std_init()
+vdp_set_config(addressof(vdp_config_table)) ' Scroll Horizontal modo 8px Strips
+
+load_tiles_DMA(addressof(tiles),168,1)
+load_cram_DMA(addressof(paleta),16,0)
+
+
+for y = 0 to 32
+ for x=0 to 64
+ draw_tile( peek(addressof(mapa) + (x<<1) + (y<<7) as word)+1, x , y , Plane_A)
+ next 
+next 
+
+x=0
+y=0
+offset = 0
+
+Do 'main
+  j = joypad6b_read(0)
+  
+  if bit_test(j, btn_left) then 
+  dir = -1
+  elseif bit_test(j, btn_right) then
+  dir = 1  
+  else
+  dir = 0
+  end if  
+  x+=dir
+  
+  
+  if bit_test(j, btn_up) then
+  offset+=1
+  elseif bit_test(j, btn_down) then
+  offset-=1  
+  end if
+  if offset > 32000 then offset = 0
+  if offset > 192   then offset = 192
+  
+   for i=0 to 28
+  Hscroll_strip8((i*(x>>4))+offset,i,plane_A)
+  next 
+ 
+  update_Hscroll_table()
+  wait_Vblank()
+Loop ' Laço infinito
+
+
+
+imports"\system\genesis_std.nbs" ' Biblioteca contendo funções standard do Mega Drives
+
+'Mapa 64x32
+mapa:
+imports"\mapa.bin"
+
+'168 Tiles
+tiles:
+imports"\tiles.bin"
+
+paleta:
+	DATAINT	&h0000,&h0000,&h00A0,&h0E22,&h0400,&h002C,&h0006,&h0EA2
+	DATAINT	&h02CE,&h0046,&h0040,&h0C0C,&h0606,&h0666,&h0660,&h0CEE
+
+'Tabela Gerada no Menu Ferramentas->VDP Config. Tool	
+vdp_config_table:
+    data &h04
+    data &h74
+    data &h30
+    data &h40
+    data &h07
+    data &h78
+    data &h00
+    data &h00
+    data &h00
+    data &h00
+    data &h1C
+    data &h02
+    data &h81
+    data &h3F
+    data &h00
+    data &h02
+    data &h01
+    data &h00
+    data &h00
+    data &h00	

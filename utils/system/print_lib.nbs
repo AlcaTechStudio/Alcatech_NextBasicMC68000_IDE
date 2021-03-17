@@ -1,0 +1,116 @@
+dim _print_cursor as integer
+dim _print_plane  as integer
+dim _print_pallet as integer
+
+sub print_init()
+load_tiles_DMA(addressof(font_lbl_prtn),256,0) ' Carrega a fonte na Vram
+_print_cursor = 0
+_print_plane = Plane_A
+_print_pallet = 0
+end sub
+
+sub set_cursor_position(byval _print_cx_p as integer, byval _print_cy_p as integer)
+_print_cursor = (_print_cx_p and 63) + ((_print_cy_p and 31) * 64) 
+end sub
+
+sub set_text_plane(byval _print_plane_text as integer)
+_print_plane = _print_plane_text
+end sub
+
+sub set_text_pal(byval _print_pal_set as integer)
+_print_pallet = _print_pal_set
+end sub
+
+' Imprime um string na tela, sempre na posição atual do cursor!
+sub print(byval _print_string as long)
+  dim char as integer = peek(  _print_string as byte)
+  while(char<>0)
+  draw_tile(char OR _print_pallet, _print_cursor AND 63 , (_print_cursor / 64) ,_print_plane)
+  _print_string +=1
+  _print_cursor +=1
+  if _print_cursor > (64*32) then _print_cursor = 0
+  char = peek(  _print_string as byte)
+  end while
+end sub
+' Imprime um string na tela e envia o cursor pro inicio da proxima linha
+sub println(byval _print_string as long)
+  dim char as integer = peek(  _print_string as byte)
+  while(char<>0)
+  draw_tile(char OR _print_pallet, _print_cursor AND 63 , (_print_cursor / 64) ,_print_plane)
+  _print_string +=1
+  _print_cursor +=1
+  if _print_cursor > (64*32) then _print_cursor = 0
+  char = peek(  _print_string as byte)
+  end while
+  _print_cursor += 64 - (_print_cursor and 63) 
+end sub
+
+sub print_var(byval _print_val as integer)
+ 
+ if _print_val = 0 then
+ print("0") : return
+ endif
+ 
+ dim flag_prnt as integer = 0
+ dim div_f as integer = 10000
+ dim pars_ as integer
+ 
+ while(div_f)
+ pars_ = _print_val / div_f
+ if pars_ OR flag_prnt then
+ flag_prnt = true
+ draw_tile(((pars_+ &H30) OR _print_pallet), _print_cursor AND 63 , (_print_cursor / 64) ,_print_plane)
+ _print_cursor +=1
+ if _print_cursor > (64*32) then _print_cursor = 0
+ end if
+ 
+ _print_val -= pars_ * div_f
+ div_f = div_f / 10
+ wend
+ 
+end sub
+
+sub print_signed(byval _print_val as signed integer)
+ if _unsigned(_print_val > 32768) then 'Negativo
+ print("-")
+ print_var( (~_print_val) +1 )
+ else 'Positivo
+ print("+")
+ print_var( _print_val )
+ end if
+end sub
+
+
+sub print_hex(byval _print_val as long)
+  dim _parse_bf[9] as byte ' String local que vai armazenar o valor do Hex convertido para string
+  for k = 0 to 8
+  _parse_bf[7-k] = _long( (_print_val AND (&hF << k*4))>>( k*4) )
+  if _byte(_parse_bf[7-k] > 9) then _parse_bf[7-k] += _char("7") else _parse_bf[7-k] += _char("0") 
+  next k 
+  _parse_bf[8] = 0 'Caractere Null - Fim de string
+  print("0x")
+  print(addressof(_parse_bf))
+end sub
+
+sub print_fixed(byval _print_val as fixed)
+  print_var(_print_val)
+  print(".")
+  _print_val = ( (_print_val and &H7F)<<7)  * 0.78125
+  if _fixed(_print_val < 10) then print("0") 
+  print_var( _print_val)  
+end sub
+
+sub print_signed_fixed(byval _print_val as fixed)  
+
+  if _unsigned(_print_val > 255) then 'Negativo
+  print("-")
+  print_fixed( (~(_print_val-0.01)) )
+  else 'Positivo
+  print("+")
+  print_fixed( _print_val )
+  end if
+ end sub
+
+font_lbl_prtn:
+imports "\system\font_msxBR_8x8.bin , -f , -e"
+

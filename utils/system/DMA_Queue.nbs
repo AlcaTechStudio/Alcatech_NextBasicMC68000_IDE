@@ -1,0 +1,194 @@
+dim __dma_queue_lenght__ as integer
+dim __dma_queue_max_lenght__ as integer
+dim __DMA_queue_buff_addr__ as long
+
+'Aloca memoria para armazenar os comandos DMA
+sub dma_Queue_init(byval __size__ as integer)
+ __dma_queue_lenght__ = 0
+ __dma_queue_max_lenght__ = __size__
+ __DMA_queue_buff_addr__ = ram_pointer
+ ram_pointer += __size__ << 4
+
+ for loc_i = 0 to __size__
+  poke(&h94009300 as long, (__DMA_queue_buff_addr__ + (loc_i <<4))   )
+  poke(&h97009600 as long, (__DMA_queue_buff_addr__ + (loc_i <<4)+4) )
+  poke(&h95008114 as long, (__DMA_queue_buff_addr__ + (loc_i <<4)+8) )
+ next
+
+end sub
+
+'Adiciona uma transferencia a fila
+sub dma_add_Queue(byval endereco_tiles as long, byval N_tiles as integer, byval end_dest as long)
+ 
+ if ((__dma_queue_lenght__+2) > __dma_queue_max_lenght__) then return 'Buffer Overflow
+ 
+ push((__DMA_queue_buff_addr__ + (__dma_queue_lenght__ <<4))+10 as long, "A0")
+ push(endereco_tiles as long,"D0")
+ push(N_tiles as word,"D1")
+ push(end_dest as long,"D2")
+ 
+ _asm_block #__
+ lsr.l #1,D0   ;Endereço   fonte  pra Words
+ lsl.w #4,D1   ;Nº Tiles copiados pra Words
+ lsl.w #5,D2   ;Ender. dest.Tiles pra Bytes
+ moveq #0,D3
+ sub.w D1,D3
+ sub.w D0,D3
+ bcs.s @ex_2p_DMAQ
+ bra @ex_DMAQ
+ @ex_DMAQ:
+ bsr @executa_DMAQ
+ bra @fimQ
+ @ex_2p_DMAQ:
+ add.w D1,D3    
+ movem.w D1-D2,-(A7)
+ move.w D3,D1     
+ bsr @executa_DMAQ
+ movem.w (A7)+,D1-D2 
+ sub.w D3,D1   
+ add.l D3,D0   
+ add.w D3,D3   
+ add.w D3,D2   
+ bsr.s @executa_DMAQ
+ bra @fimQ
+ @executa_DMAQ:
+ movep.l D0,-7(A0)
+ movep.w D1,-9(A0)	
+ lsl.l #2,D2
+ lsr.w #2,D2
+ swap D2
+ and.w #$3,D2
+ or.l #$40000080,D2
+ move.w      D2,2(A0)
+ swap D2
+ move.w      D2,(A0)
+ adda       #16,A0
+ moveq       #1,D4
+ add.w     D4,_global___dma_queue_lenght__
+ rts
+ @fimQ: 
+ __# _asm_block_end
+ 
+end sub
+
+'Adiciona uma transferencia para a CRAM a fila de DMA
+sub dma_CRAM_add_Queue(byval endereco_pal as long, byval N_cores as integer, byval paleta_dest as long)
+
+ if ((__dma_queue_lenght__+2) > __dma_queue_max_lenght__) then return 'Buffer Overflow
+ push((__DMA_queue_buff_addr__ + (__dma_queue_lenght__ <<4))+10 as long, "A0")
+ push(endereco_pal as long, "D0")
+ push(N_cores as word, "D1")
+ push(paleta_dest as long, "D2")
+ 
+ _asm_block #__
+ lsr.l #1,D0  
+ lsl.w #5,D2  
+ moveq #0,D3
+ sub.w D1,D3
+ sub.w D0,D3
+ bcs.s @ex_2p_DMAQ_cram
+ bra @ex_DMAQ_cram
+ @ex_DMAQ_cram:
+ bsr @executa_DMAQ_cram
+ bra @fim_cramQ
+ @ex_2p_DMAQ_cram:
+ add.w D1,D3      
+ movem.w D1-D2,-(A7)
+ move.w D3,D1     
+ bsr @executa_DMAQ_cram
+ movem.w (A7)+,D1-D2 
+ sub.w D3,D1   
+ add.l D3,D0   
+ add.w D3,D3   
+ add.w D3,D2   
+ bsr.s @executa_DMAQ_cram
+ bra @fim_cramQ
+ @executa_DMAQ_cram:
+ movep.l D0,-7(A0)
+ movep.w D1,-9(A0)	
+ swap D2
+ or.l #$C0000080,D2
+ move.w      D2,2(A0)
+ swap D2
+ move.w      D2,(A0)
+ adda       #16,A0
+ moveq       #1,D4
+ add.w     D4,_global___dma_queue_lenght__
+ rts
+ @fim_cramQ: 
+ __# _asm_block_end
+
+end sub
+
+'Adiciona uma transferencia para a CRAM a fila de DMA
+sub dma_CRAM_add_Queue_128ksafe(byval endereco_pal as long, byval N_cores as integer, byval paleta_dest as long)
+ 
+ if ((__dma_queue_lenght__+1) > __dma_queue_max_lenght__) then return 'Buffer Overflow
+
+ push((__DMA_queue_buff_addr__ + (__dma_queue_lenght__ <<4))+10 as long, "A0")
+ push(endereco_pal as long, "D0")
+ push(N_cores as word, "D1")
+ push(paleta_dest as long, "D2")
+ 
+ _asm_block #__
+ lsr.l #1,D0  
+ lsl.w #5,D2   
+ movep.l D0,-7(A0)
+ movep.w D1,-9(A0)	
+ swap D2
+ or.l #$C0000080,D2
+ move.w      D2,2(A0)
+ swap D2
+ move.w      D2,(A0)
+ __# _asm_block_end
+ 
+ __dma_queue_lenght__+=1
+ 
+end sub
+
+'Adiciona uma transferencia a fila
+sub dma_add_Queue_128ksafe(byval __tiles_addr__ as long, byval __N_tiles__ as integer, byval __addr_dest__ as long)
+
+ if ((__dma_queue_lenght__+1) > __dma_queue_max_lenght__) then return 'Buffer Overflow
+
+ push((__DMA_queue_buff_addr__ + (__dma_queue_lenght__ <<4))+10 as long, "A0")
+ push(__tiles_addr__ as long,"D0")
+ push(__N_tiles__ as word,"D1")
+ push(__addr_dest__ as long,"D2")
+ _asm_block #__
+ lsr.l #1,D0   
+ lsl.w #4,D1   
+ lsl.w #5,D2    
+ movep.l D0,-7(A0)
+ movep.w D1,-9(A0)
+ lsl.l #2,D2
+ lsr.w #2,D2
+ swap D2
+ and.w #$3,D2
+ or.l #$40000080,D2
+ move.w      D2,2(A0)
+ swap D2
+ move.w      D2,(A0)
+ __# _asm_block_end
+
+ __dma_queue_lenght__+=1
+end sub
+
+'Executa a tranferencia de DMA para todos os itens na fila 
+sub DMA_Queue_Transfer()
+
+ if __dma_queue_lenght__ = 0 then return
+
+ push(__DMA_queue_buff_addr__  as long, "A1")
+ push( &hC00004 as long, "A2")
+ 
+ for __i__ = 0 to __dma_queue_lenght__
+ _asm("move.l (A1)+,(A2)") ' Tamanho dos dados		
+ _asm("move.l (A1)+,(A2)") ' Endereco Fonte Up bytes
+ _asm("move.l (A1)+,(A2)") ' Endereco fonte low byte + endereco de Destino High Byte
+ _asm("move.w (A1)+,(A2)") ' trigger do DMA
+ _asm("addq      #2,A1")   ' alinha o vetor -> long data wide
+ next
+
+ __dma_queue_lenght__ = 0 'Clear Queue 
+end sub

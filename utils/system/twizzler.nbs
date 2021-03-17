@@ -1,0 +1,46 @@
+
+
+sub twim_dec2VRAM( byval __data__addr_ as long, byval __data__dest__ as integer)
+ _asm_block #__
+        lea	($C00000).l,a5				; load VDP data port
+		move.w	#$4020,(TwizVRAM).w			; prepare DMA bit & VRAM write mode bits
+		move.w	d0,(TwizVRAM+$02).w			; store VRAM address
+		moveq	#$00,d2					; reset field counter
+		bsr.s	TD_Setup				; setup registers/huffman tables
+		lea	(TwizBuffer).w,a1			; load buffer address
+		lea	-TwizBufferSize(a1),a4			; ''
+		moveq	#$00,d5					; clear remaining counter
+		move.w	d1,(TwizSize).w				; store total size
+		moveq	#$00,d1					; clear d1
+		bra.s	TDM_GetSize				; continue into loop
+
+TDM_FullBuffer:
+		bsr.w	TD_DecompTwim				; decompress data
+		bsr.w	TD_Flush				; flush data to VRAM
+		move.w	a1,d1					; load current buffer address
+		subi.w	#(TwizBuffer&$FFFF),d1			; subtract starting offset
+		andi.w	#$0001,d1				; get only odd/even bit
+		neg.w	d1					; reverse to negative
+
+TDM_GetSize:
+		add.w	#(TwizBufferSize&$FFFE),d1		; set buffer size
+		sub.w	d1,(TwizSize).w				; subtract from total size
+		bcc.s	TDM_FullBuffer				; if the total size is larger than the buffer, branch
+		add.w	(TwizSize).w,d1				; set size to remaining total
+		bsr.w	TD_DecompTwim				; decompress data
+		bsr.w	TD_Flush				; flush data to VRAM 
+ __# _asm_block_end
+
+end sub
+
+sub twiz_dec2RAM( byval __data__addr_ as long, byval __data__dest_ as long)
+
+_asm("move.l (_local___data__addr_, A6),A0")
+_asm("move.l (_local___data__dest_, A6),A1")
+_asm("moveq #0,d2")
+_asm("bsr.s TD_Setup")
+_asm("bsr.w TD_DecompTwiz")
+
+end sub
+
+imports "\system\twizzler_algorithm.asm"

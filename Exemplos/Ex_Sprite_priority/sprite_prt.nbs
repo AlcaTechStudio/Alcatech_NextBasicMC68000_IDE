@@ -1,0 +1,179 @@
+imports"\system\genesis_header.asm" ' Header de uma ROM de mega Drive Padrão (deve ficar sempre no topo)
+
+dim v_count as integer
+
+std_init()
+load_tiles_dma(addressof(ball),16,1)
+load_cram_dma(addressof(pal),32,0)
+
+sp1 = 1 
+sp2 = 2
+set_sprite_size(sp1,3,3)
+set_sprite_size(sp2,3,3)
+set_sprite_gfx(sp1,1,0)  
+set_sprite_gfx(sp2,1,1)
+
+set_sprite_position(sp1,284,180)
+set_sprite_position(sp2,300,180)
+
+enable_global_int()
+
+Do 'main
+if v_count >= 60 then
+  ' Sprite sp1 por cima do sp2 ( ordem padrão)
+  ' Não é necessario mexer na "linkagem", por que a cada Vblank a Ordem dos Sprite é resetada
+else
+ set_sprite_link(sp1-1,sp2) ' Sprite sp2 por cima do sp1
+ set_sprite_link(sp2,sp1)
+ set_sprite_link(sp1,sp2+1)
+end if
+flag_vbl = 1
+while(flag_vbl) : wend
+Loop ' Laço infinito
+
+sub isr_vblank()
+ v_count += 1
+ if v_count > 120 then v_count = 0 'Overflow da contagem de 2 segundos
+ update_sprite_table()   'Atualiza a Sprite Table na Vram
+ reset_sprite_priority() 'Reseta a ordem com que os sprites são desenhados na tela
+ flag_vbl = 0 'Flag ~ Loop de espera pelo Vblank
+end sub
+
+
+imports"\system\genesis_std.nbs" ' Biblioteca contendo funções standard do Mega Drive
+pal:
+	DataInt	&h0000,&h0222,&h0244,&h0666,&h0444,&h0246,&h0668,&h0002 
+	DataInt	&h0024,&h0068,&h0000,&h0A20,&h008A,&h0E40,&h000E,&h00CE 
+	DataInt	&h0ECA,&h0222,&h0244,&h0666,&h0444,&h0246,&h0668,&h0002
+	DataInt	&h0024,&h0068,&h0000,&h0A20,&h008A,&h0E00,&h0E00,&h00CE  
+
+
+Ball: 
+	DataLong	&h00000000	'  Tile: 0
+	DataLong	&h00000000
+	DataLong	&h00000000
+	DataLong	&h0000000E
+	DataLong	&h00000EEE
+	DataLong	&h0000EEEE
+	DataLong	&h0000EEEE
+	DataLong	&h000EEEEE
+	DataLong	&h00EEEEEE	'  Tile: 1
+	DataLong	&h00EEEEEE
+	DataLong	&h0EEEEEEE
+	DataLong	&h0EEEEEEE
+	DataLong	&h0EEEEEEE
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE	'  Tile: 2
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE
+	DataLong	&h0EEEEEEE
+	DataLong	&h0EEEEEEE
+	DataLong	&h0EEEEEEE
+	DataLong	&h00EEEEEE
+	DataLong	&h00EEEEEE
+	DataLong	&h000EEEEE	'  Tile: 3
+	DataLong	&h0000EEEE
+	DataLong	&h0000EEEE
+	DataLong	&h00000EEE
+	DataLong	&h0000000E
+	DataLong	&h00000000
+	DataLong	&h00000000
+	DataLong	&h00000000
+	DataLong	&h000000EE	'  Tile: 4
+	DataLong	&h00EEEEEE
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE	'  Tile: 5
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE	'  Tile: 6
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE	'  Tile: 7
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE
+	DataLong	&h00EEEEEE
+	DataLong	&h000000EE
+	DataLong	&hEE000000	'  Tile: 8
+	DataLong	&hEEEEEE00
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE	'  Tile: 9
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE	'  Tile: 10
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE	'  Tile: 11
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEE00
+	DataLong	&hEE000000
+	DataLong	&h00000000	'  Tile: 12
+	DataLong	&h00000000
+	DataLong	&h00000000
+	DataLong	&hE0000000
+	DataLong	&hEEE00000
+	DataLong	&hEEEE0000
+	DataLong	&hEEEE0000
+	DataLong	&hEEEEE000
+	DataLong	&hEEEEEE00	'  Tile: 13
+	DataLong	&hEEEEEE00
+	DataLong	&hEEEEEEE0
+	DataLong	&hEEEEEEE0
+	DataLong	&hEEEEEEE0
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE	'  Tile: 14
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEEE
+	DataLong	&hEEEEEEE0
+	DataLong	&hEEEEEEE0
+	DataLong	&hEEEEEEE0
+	DataLong	&hEEEEEE00
+	DataLong	&hEEEEEE00
+	DataLong	&hEEEEE000	'  Tile: 15
+	DataLong	&hEEEE0000
+	DataLong	&hEEEE0000
+	DataLong	&hEEE00000
+	DataLong	&hE0000000
+	DataLong	&h00000000
+	DataLong	&h00000000
+	DataLong	&h00000000	

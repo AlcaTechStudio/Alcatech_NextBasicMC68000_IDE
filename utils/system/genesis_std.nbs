@@ -1,0 +1,696 @@
+'''''''''''''''''''''''''''''''''''''''''''
+' Anotações 
+'           -> Fazendo Lib de scrolling (whole,strip,line)
+'              testar tudo depois
+'           -> valores padrão (Equal) para variaveis
+'              Testar tudo depois      
+'           -> Consertar interrupcoes
+''''''''''''''''''''''''''''''''''''''''''
+
+' Interrupções No Mega Drive
+Equal isr_Ext "isr_02_vector"
+Equal isr_Hblank "isr_04_vector"
+Equal isr_Vblank "isr_06_vector"
+
+' Bits referentes a cada botão no Joystick
+Equal btn_up "0"
+Equal btn_down "1"
+Equal btn_left "2"
+Equal btn_right "3"
+Equal btn_b "4"
+Equal btn_c "5"
+Equal btn_a "6"
+Equal btn_start "7"
+Equal btn_z "8"
+Equal btn_y "9"
+Equal btn_z "10"
+Equal btn_mode "11"
+
+' Endereços na VRAM
+Equal plane_A "0"
+Equal plane_B "1"
+Equal Plane_window "2"
+
+'Equal plane_sprite "&hF000"  Usar a variavel
+
+'Equal Scroll_A "0"
+'Equal Scroll_B "1"
+
+' Endereços na VRAM
+Equal V_Flip     "&h1000"
+Equal H_Flip     "&h800"
+Equal Priority_H "&h8000"
+
+' Paletas de cores para tiles
+Equal palette_1 "1<<13"
+Equal palette_2 "2<<13"
+Equal palette_3 "3<<13"
+
+structure sprite_shape
+dim y         as integer
+dim size_link as integer
+dim gfx       as integer
+dim x         as integer
+end structure
+' Buffers na RAM
+dim sprite_table[80] as new sprite_shape 'Buffer para a Sprite Table na RAM
+dim buff_dma[3] as long ' Buffer na RAM que serve de construtor para os comandos do DMA
+dim H_scroll_buff[448] as integer ' Buffer para a  scroll table
+' Endereços na Vram
+dim planes_addr[3] as integer '0=Plane_A 1=Plane_B 2=Plane_Win
+dim sprite_table_addr as integer
+dim scroll_table_addr as integer
+' Tabela com valores de configuracao do VDP
+dim vdp_conf_table_addr as long
+
+'Sub Rotina que inicializa os parametros padrão da Biblioteca genesis_std 
+sub std_init()  
+  buff_dma[0]= &h94009300 
+  buff_dma[1]= &h97009600 
+  buff_dma[2]= &h95008114 
+  'Zera Buffer para sprites na RAM
+  for i = 0 to 80
+  sprite_table[i].x         = 0
+  sprite_table[i].size_link = i+1 ' Ordem com que os sprites são desenhado na tela
+  sprite_table[i].gfx       = 0
+  sprite_table[i].y         = 0  
+  next 
+  sprite_table[79].size_link = 0 ' Ultimo sprite desenhado deve apontar para o primeiro
+  for i=0 to 448
+  H_scroll_buff[i] = 0
+  next 
+  
+  vdp_set_config(addressof(VDP_Std_Reg_init)) ' Envia configuração padrão pro VDP
+  ' Limpa VRAM,VSRAM e CRAM
+  _asm_block #__
+    move.l #$C00004,A5
+    move.w #$8174,(A5) 
+	clr D0
+    move.w #$8F01,(A5) 
+    move.l #$94000000+(($FFFF&$FF00)<<8)+$9300+($FFFF&$FF),(A5)
+    move.w #$9780,(A5)
+    move.l #$40000080+(($0000&$3FFF)<<16)+(($0000&$C000)>>14),(A5)
+    move.w #$0000,-4(A5)
+    nop
+@Espera_dma_inicializacao_header_fim:
+    btst #1,$C00005
+    bne.s @Espera_dma_inicializacao_header_fim
+    move.w #$8F02,(A5)
+    move.l #$C0000000,(A5)
+    move.l #$003F-2,D0
+		move.w #$0000,-4(A5)
+	    move.w #$0EEE,-4(A5)
+@loop_inicalizacao_zera_Cram:
+    move.w #$0000,-4(A5)
+    dbra D0,@loop_inicalizacao_zera_Cram
+    move.w #$0027,D0
+    move.l #$40000010,(A5)
+@loop_inicalizacao_zera_VSram:
+    move.w #$0000,-4(A5)
+    dbra D0,@loop_inicalizacao_zera_VSram
+	move.w #$8174,(A5)    
+  __# _asm_block_end  
+end sub 
+ 
+ 
+' Sobe para os Reg.s do VDP os valores contidos na tabela de parametro
+sub vdp_set_config(byval conf_table_addr as long)
+ 'Armazena endereço da tabela com configuração do VDP
+ vdp_conf_table_addr=conf_table_addr
+ ' Importante para o Draw Tiles
+ planes_addr[0] = peek(conf_table_addr + 2 as byte) << 10 'Endereço Plane A
+ planes_addr[1] = peek(conf_table_addr + 4 as byte) << 13 'Endereço Plane B
+ planes_addr[2] = peek(conf_table_addr + 3 as byte) << 10 'Endereço Plane Window.
+ ' Importante para a sprite Engine
+ sprite_table_addr =  peek(conf_table_addr + 5 as byte) << 9 'Endereço spt_table
+ ' Importante para scroll sub'scroll
+ scroll_table_addr = peek(conf_table_addr + &h0D as byte) << 10' Endereço da Scroll Table
+ ' Sobe os valores para os Registradores
+ push( conf_table_addr as long, "A0")
+ _asm_block #__
+    move.l #$C00004,A5           
+	move.w #$8000,D0
+    move.l  #18,D1    
+@loop_vdp_config_sub__:
+    move.b (A0)+,D0   
+    move.w D0,(A5)    
+    add.w #$0100,D0   
+    dbra D1,@loop_vdp_config_sub__
+ __# _asm_block_end 
+end sub
+ 
+' Desenha um Tile na Tela, na posição e plano indicado nos parametros
+sub draw_tile(byval tile as integer, byval x_tile_cord as integer, byval y_tile_cord as integer, byval plane as integer )
+ push(  ((x_tile_cord  + ((y_tile_cord)<<6))<<1) + planes_addr[plane] as long, "D0")
+ _asm_block #__
+ move.w sr,-(A7)
+ move.w #$2700,sr
+ lsl.l #2,D0
+ lsr.w #2,D0
+ swap  D0
+ add.l #$40000000,D0
+ move.l D0,$C00004
+ move.w _local_tile(A6),$C00000
+ move.w (A7)+,sr
+ __# _asm_block_end 
+end sub
+
+sub draw_tilemap(byval tm as long, byval s_x as word, byval s_y as word, byval c_x as word,byval c_y as word, byval plane as word, byval offset_ts_k as word)
+push(((c_x  + ((c_y)<<6))<<1) or planes_addr[plane] as long, "D0")
+_asm_block #__
+ lea $C00000,A1
+ move.l _local_tm(A6),A0
+ move.w #1,D1
+ sub.w D1,_local_s_y(A6)
+ sub.w D1,_local_s_x(A6)
+ lsl.l #2,D0
+ lsr.w #2,D0
+ swap  D0
+ or.l #$40000000,D0
+ move.w _local_s_y(A6),D4
+for_y_dr_tiles_lbl:
+ move.l D0,4(A1)
+ move.w _local_s_x(A6),D5
+for_x_dr_tiles_lbl:
+ move.w (A0)+,D3
+ add.w  _local_offset_ts_k(A6),D3
+ move.w D3,(A1)
+ dbra D5,for_x_dr_tiles_lbl
+ add.l #$800000,d0
+ dbra D4,for_y_dr_tiles_lbl
+__# _asm_block_end
+end sub
+
+
+' Realiza a leitura do joystick de 6 botões (funciona para o de 3 botões tambem)
+' Retorna um valor word e recebe como parametro um indice correspondente a '0' p/ j1 e '1' p/ j2
+function joypad6b_read(byval jp as integer) as integer
+ push( jp as word, "D1")
+ _asm_block #__
+	move.l  #$A10003,A0
+    add.w   D1,D1
+	add.w   D1,A0	
+	move.b  #$40,6(a0);(0xA10009)
+	move.b  #$40,(a0) ;(0xA10003)
+	nop
+	nop
+	move.b  (a0),d0		
+	andi.b	#$3F,d0		
+	move.b	#$0,(a0)	
+	nop
+	nop
+	move.b	(a0),d1	
+	move.b  #$40,(a0)	
+	andi.b	#$30,d1		
+	move.b	#$0,(a0)	
+	lsl.b	#$2,d1		
+	move.b	#$40,(a0)
+	or.b	d1,d0		
+	move.b  (A0),D1
+	move.b  #0,(A0)
+	andi.w	#$0F, d1
+	lsl.w	#8, d1
+	or.w    D1,D0
+	not.w   d0
+ __# _asm_block_end
+ return pop("D0" as word)
+end function 
+
+'Caso esteja no Periodo de Vblank espera terminar e congela o programa até o proximo
+
+sub wait_Next_Vblank()
+ _asm_block #__
+		move.w  $C00004,D0
+        btst    #3,D0
+		bne.b   wait_Next_vblank
+		
+        move.w  $C00004,D0
+        btst    #3,D0
+        beq.b   wait_Next_vblank
+ __# _asm_block_end
+end sub
+
+' Congela o programa caso não esteja noperiodo de  Vblank
+' Sabemos que o Vblank começou quando o Bit 03 do Registrador status muda de 0 p/ 1
+sub wait_Vblank()
+ _asm_block #__
+		move.w  $C00004,D0
+        btst    #3,D0
+        beq.b   wait_vblank
+ __# _asm_block_end
+end sub
+
+ ' Sub Rotina que Faz a copia dos tiles para a VRAM por DMA, porem sem fazer a verificação ou o Split quandos os dados ultrapassam um chunk de 128Kb
+ ' É uma rotina muito mais veloz que a load_tiles_DMA() porem somente utiliza se tiver certeza que os dados estão todos dentro do mesmo chunk   
+sub load_tiles_DMA_128ksafe(byval endereco_tiles as long, byval N_tiles as integer, byval end_dest as long)
+ push(endereco_tiles as long,"D0")
+ push(N_tiles as word,"D1")
+ push(end_dest as long,"D2")
+ push(addressof(buff_dma)+10 as long, "A0")
+ _asm_block #__
+ lsr.l #1,D0   
+ lsl.w #4,D1   
+ lsl.w #5,D2    
+ movep.l D0,-7(A0)
+ movep.w D1,-9(A0)
+ lsl.l #2,D2
+ lsr.w #2,D2
+ swap D2
+ and.w #$3,D2
+ or.l #$40000080,D2
+ move.l -10(A0),$C00004
+ move.l  -6(A0),$C00004
+ move.w  -2(A0),$C00004
+ move.l      D2,$C00004
+ __# _asm_block_end
+end sub
+
+' Sub Rotina que Faz a copia dos tiles para a VRAM por DMA, a transferencia é automaticamente dividida em duas quando necessario
+' É um metodo muito veloz de transferencia para a VRAM, principalmente durante o intervalo de V_Blank
+sub load_tiles_DMA(byval endereco_tiles as long, byval N_tiles as integer, byval end_dest as long)
+ push(endereco_tiles as long,"D0")
+ push(N_tiles as word,"D1")
+ push(end_dest as long,"D2")
+ push(addressof(buff_dma)+10 as long, "A0")
+ _asm_block #__
+ lsr.l #1,D0   ;Endereço   fonte  pra Words
+ lsl.w #4,D1   ;Nº Tiles copiados pra Words
+ lsl.w #5,D2   ;Ender. dest.Tiles pra Bytes
+ moveq #0,D3
+ sub.w D1,D3
+ sub.w D0,D3
+ bcs.s @ex_2p_DMA
+ bra @ex_DMA
+@ex_DMA:
+ bsr @executa_DMA
+ bra @fim
+@ex_2p_DMA:
+ add.w D1,D3    
+ movem.w D1-D2,-(A7)
+ move.w D3,D1     
+ bsr @executa_DMA
+ movem.w (A7)+,D1-D2 
+ sub.w D3,D1   
+ add.l D3,D0   
+ add.w D3,D3   
+ add.w D3,D2   
+ bsr.s @executa_DMA
+ bra @fim
+@executa_DMA:
+ movep.l D0,-7(A0)
+ movep.w D1,-9(A0)	
+ lsl.l #2,D2
+ lsr.w #2,D2
+ swap D2
+ and.w #$3,D2
+ or.l #$40000080,D2
+ move.l -10(A0),$C00004
+ move.l  -6(A0),$C00004
+ move.w  -2(A0),$C00004
+ move.l      D2,$C00004
+ rts
+@fim: 
+__# _asm_block_end
+
+end sub
+
+sub load_cram_dma(byval endereco_pal as long, byval N_cores as integer, byval paleta_dest as long)
+push(endereco_pal as long, "D0")
+push(N_cores as word, "D1")
+push(paleta_dest as long, "D2")
+push(addressof(buff_dma)+10 as long, "A0")
+_asm_block #__
+ lsr.l #1,D0  
+ lsl.w #5,D2  
+ moveq #0,D3
+ sub.w D1,D3
+ sub.w D0,D3
+ bcs.s @ex_2p_DMA_cram
+ bra @ex_DMA_cram
+@ex_DMA_cram:
+ bsr @executa_DMA_cram
+ bra @fim_cram
+@ex_2p_DMA_cram:
+ add.w D1,D3      
+ movem.w D1-D2,-(A7)
+ move.w D3,D1     
+ bsr @executa_DMA_cram
+ movem.w (A7)+,D1-D2 
+ sub.w D3,D1   
+ add.l D3,D0   
+ add.w D3,D3   
+ add.w D3,D2   
+ bsr.s @executa_DMA_cram
+ bra @fim_cram
+@executa_DMA_cram:
+ movep.l D0,-7(A0)
+ movep.w D1,-9(A0)	
+ swap D2
+ or.l #$C0000080,D2
+ move.l -10(A0),$C00004
+ move.l  -6(A0),$C00004
+ move.w  -2(A0),$C00004
+ move.l      D2,$C00004
+ rts
+@fim_cram: 
+__# _asm_block_end
+end sub
+
+
+sub load_cram_dma_128ksafe(byval endereco_pal as long, byval N_cores as integer, byval paleta_dest as long)
+ push(endereco_pal as long, "D0")
+ push(N_cores as word, "D1")
+ push(paleta_dest as long, "D2")
+ push(addressof(buff_dma)+10 as long, "A0")
+ _asm_block #__
+ lsr.l #1,D0  
+ lsl.w #5,D2   
+ movep.l D0,-7(A0)
+ movep.w D1,-9(A0)	
+ swap D2
+ or.l #$C0000080,D2
+ move.l -10(A0),$C00004
+ move.l  -6(A0),$C00004
+ move.w  -2(A0),$C00004
+ move.l      D2,$C00004
+__# _asm_block_end
+end sub
+
+' Define o tile de um sprite
+sub set_sprite_gfx(byval sprite_idx as word, byval sprite_gfx_ini as word,byval sprite_pal as word)
+  _asm_block #__
+  move.w _local_sprite_pal(a6),D1
+  lsl.w #8,D1
+  lsl.w #5,D1
+  or.w _local_sprite_gfx_ini(a6),D1  
+  __# _asm_block_end
+  sprite_table[sprite_idx].gfx = pop("d1" as word)
+end sub
+
+' Define a posição X e Y
+sub set_sprite_position(byval sprite_idx as word, byval sprite_x_pos as word,byval sprite_y_pos as word)
+  sprite_table[sprite_idx].x = sprite_x_pos AND 511
+  sprite_table[sprite_idx].y = sprite_y_pos AND 511
+end sub
+' Define o tamanho de um sprite
+sub set_sprite_size(byval sprite_idx as word,byval sprite_x_size as word,byval sprite_y_size as word)
+   sprite_table[sprite_idx].size_link = sprite_table[sprite_idx].size_link AND &H00FF
+   sprite_table[sprite_idx].size_link |= ((sprite_x_size << 2) OR sprite_y_size) << 8 
+end sub  
+' Os sprites são desenhados em ordem crescente 0 -> 79
+sub reset_sprite_priority()
+ for _list_ = 0 to 80
+ sprite_table[ _list_ ].size_link = (sprite_table[_list_].size_link AND &HFF00) OR (_list_ +1)
+ next
+ sprite_table[79].size_link = (sprite_table[79].size_link AND &HFF00) 'Ultimo Sprite deve apontar para o primeiro
+end sub
+'
+sub set_sprite_link(byval _sp1_ as integer, byval _link_value_ as integer)
+ sprite_table[_sp1_].size_link = (sprite_table[_sp1_].size_link and &hFF00) or (_link_value_ and &H00FF)
+ end sub
+
+sub update_sprite_table()
+ push(addressof(buff_dma)+10 as long, "A0")
+ push(sprite_table_addr as long,"D2")
+ push(320 as word,"D1")
+ push(addressof(sprite_table)>>1 as long,"D0")
+ _asm_block #__
+ movep.l D0,-7(A0)
+ movep.w D1,-9(A0)	
+ lsl.l #2,D2
+ lsr.w #2,D2
+ swap D2
+ and.w #$3,D2
+ or.l #$40000080,D2
+ move.l -10(A0),$C00004
+ move.l  -6(A0),$C00004
+ move.w  -2(A0),$C00004
+ move.l      D2,$C00004
+ __# _asm_block_end
+end sub
+
+' Define a posição da "camera" de scroll na Vertical
+' Usar apenas no modo Whole Screen
+sub Set_VerticalScroll_position(byval cam_V as integer, byval plane as integer)
+  push(Cam_V as word, "D0")
+  push(plane as word, "D1")
+  _asm_block #__
+  add.w D1,D1
+  and.l #$0F,D1   ;Estende D1 para 32 Bits
+  and.w #$3FF,D0 ;Resto de divisão por 1023
+  swap D1
+  add.l #$40000010,D1
+  move.l D1,$C00004
+  move.w D0,$C00000
+  __# _asm_block_end
+end sub
+
+' Define a posição da "camera" de scroll na Horizontal
+' Usar apenas no modo Whole Screen
+sub Set_HorizontalScroll_position(byval cam_H as integer, byval plane as integer)
+  push(512 - cam_H as word, "D0")
+  push(plane as word, "D1")
+_asm_block #__
+  add.w D1,D1  
+  and.l #$0000000F,D1   ;Ext. D1 para 32 Bits
+  add.w _global_scroll_table_addr,D1
+  and.w #$3FF,D0 ;Resto de divisão por 1023
+  lsl.l #2,D1
+  lsr.w #2,D1
+  swap D1
+  add.l #$40000000,D1
+  move.l D1,$C00004
+  move.w D0,$C00000
+__# _asm_block_end
+end sub
+
+' Seta a posição de scroll pra uma strip de 8 pixels 
+' Scroll Strip deve ser acionado no vdp antes de ser usado
+sub Hscroll_strip8(byval cam as integer, byval strip as integer, byval plane as integer )
+H_scroll_buff[(strip << 4)+plane] =  (512 - cam ) and 511
+end sub
+' Seta a posição de Scroll pra uma linha individual
+' Scroll Line deve ser acionado no vdp antes de ser usado
+sub Hscroll_line(byval cam as integer, byval line as integer, byval plane as integer )
+H_scroll_buff[(line << 1)+plane] =  (512 - cam ) and 511
+end sub
+ 
+' Envia scroll table pra Vram via DMA
+' Usar apenas caso seja necessario usar o scroll_Strip8 ou Scroll_line
+sub update_Hscroll_table()
+  ' Consertar na otimização -> Reg D0 é usado pra estender de 16 p/ 32bits
+ push(scroll_table_addr as long,"D2")
+ push(448 as word,"D1")
+ push(addressof(H_scroll_buff)>>1 as long,"D0")
+ push(addressof(buff_dma)+10 as long, "A0")
+ _asm_block #__
+ movep.l D0,-7(A0)
+ movep.w D1,-9(A0)	
+ lsl.l #2,D2
+ lsr.w #2,D2
+ swap D2
+ and.w #$3,D2
+ or.l #$40000080,D2
+ move.l -10(A0),$C00004
+ move.l  -6(A0),$C00004
+ move.w  -2(A0),$C00004
+ move.l      D2,$C00004
+ __# _asm_block_end
+end sub 
+' Ativa as interrupções Verticais
+ sub Enable_Display()
+   _asm_block #__
+    move.l _global_vdp_conf_table_addr,A0
+    move.w #$8B00,D0
+	move.b 1(A0),D0
+    or.b #%01000000,D0
+	move.w D0,$C00004
+__# _asm_block_end
+end sub
+' Desativa as interrupções Verticais
+sub Disable_Display()
+   _asm_block #__
+    move.l _global_vdp_conf_table_addr,A0
+    move.w #$8B00,D0
+	move.b 1(A0),D0
+    and.b #%10111111,D0
+	move.w D0,$C00004
+__# _asm_block_end
+end sub
+' Ativa as interrupções Globais
+sub Enable_global_int()
+   _asm("move.w #$2000,sr")
+end sub
+' Desativa as interrupções Globais
+sub Disable_global_int()
+   _asm("move.w #$2700,sr")
+end sub
+
+' Ativa as interrupções Verticais
+ sub Enable_v_int()
+   _asm_block #__
+    move.l _global_vdp_conf_table_addr,A0
+    move.w #$8100,D0
+	move.b 1(A0),D0
+    or.b #%00100000,D0
+	move.w D0,$C00004
+__# _asm_block_end
+end sub
+' Desativa as interrupções Verticais
+sub Disable_v_int()
+   _asm_block #__
+    move.l _global_vdp_conf_table_addr,A0
+    move.w #$8100,D0
+	move.b 1(A0),D0
+    and.b #%11011111,D0
+	move.w D0,$C00004
+__# _asm_block_end
+end sub
+
+' Ativa as interrupções Horizontais
+sub Enable_h_int()
+   _asm_block #__
+    move.l _global_vdp_conf_table_addr,A0
+    move.w #$8000,D0
+	move.b (A0),D0
+    or.b #%00010000,D0
+	move.w D0,$C00004
+__# _asm_block_end
+end sub
+' Desativa as interrupções Horizontais
+sub Disable_h_int()
+   _asm_block #__
+    move.l _global_vdp_conf_table_addr,A0
+    move.w #$8000,D0
+	move.b (A0),D0
+    and.b #%11101111,D0
+	move.w D0,$C00004
+__# _asm_block_end
+end sub
+
+' Ativa as interrupções Externas
+sub Enable_Ext_int()
+_asm_block #__
+    move.l _global_vdp_conf_table_addr,A0
+    move.w #$8B00,D0
+	move.b 11(A0),D0
+    or.b #%00001000,D0
+	move.w D0,$C00004
+__# _asm_block_end
+end sub
+
+' Desativa as interrupções Externas
+sub Disable_Ext_int()
+_asm_block #__
+    move.l _global_vdp_conf_table_addr,A0
+    move.w #$8B00,D0
+	move.b 11(A0),D0
+    and.b #%11110111,D0
+	move.w D0,$C00004
+__# _asm_block_end
+end sub
+
+sub set_hint_counter( byval count as integer)
+ push( ((count AND &h00FF) + &h8A00) as word, "D0")
+ _asm("move.w D0,$C00004")
+end sub
+
+sub direct_color_DMA(byval addr as long, byval frames as integer)
+ disable_global_int()
+ push(addressof(buff_dma)+10 as long, "A0")
+ push(&hAD40 as word,"D1")
+ push(addr>>1 as long,"D0")
+ push(frames as word ,"D4")
+ _asm_block #__
+   movep.l D0,-7(A0)
+   movep.w D1,-9(A0)	
+   move.l #$C00004,A2
+   
+   move.l #$00000020,(A2)
+   move.w -4(A2),-(A7)
+   
+   moveq #0,D0
+   move.w  #$8F00,(A2)    
+   
+dcd_bgf__:  
+    lea _global_buff_dma,A0
+    move.w  #$8154,(A2)            
+    move.l  #$40000000,(A2)        
+VB_inicio:
+    btst    #3,1(A2)
+    beq.b   VB_inicio              
+VB_Fim:
+    btst    #3,1(A2)
+    bne.b   VB_Fim                 
+    move.l  d0,-4(A2)
+    move.l  d0,-4(A2)
+    move.l  d0,-4(A2)
+    move.l  d0,-4(A2)
+    move.l  d0,-4(A2)
+    move.l  d0,-4(A2)
+    move.w  d0,-4(A2)
+    nop
+    nop
+    nop
+    nop 
+    move.l (A0)+,(A2)
+    move.l (A0)+,(A2)
+    move.l (A0),(A2)
+    move.l #$C0000080,(A2)
+    dbra D4,dcd_bgf__
+
+    move.l _global_vdp_conf_table_addr,A0
+	move.w #$8100,D0
+	move.b 1(A0),D0
+	move.w D0,(A2)
+    move.w #$8F00,D0
+	move.b 15(A0),D0
+	move.w D0,(A2)
+    move.l #$C0000000,(A2)
+    move.w (A7)+,-4(A2)
+	
+ __# _asm_block_end
+ enable_global_int()
+end sub
+
+
+sub wait_frames(byval nframes as integer)
+  push( nframes as long, "D0")
+_asm_block #__
+	lea $C00004,A0
+@act_disp:
+	move.w	(A0),d1
+	btst	#3,d1
+	beq	@act_disp
+@vb_in_pg:
+	move.w	(A0),d1
+	btst	#3,d1
+	bne	@vb_in_pg
+	dbra D0,@act_disp
+__# _asm_block_end 
+end sub
+
+'-------------------------------------
+'  Dados Inicializacao Padrão do VDP -
+'-------------------------------------
+VDP_std_Reg_init:
+	data &h04 ' 0x00:  Int. H. off, 512 Cores, Display ligado 
+	data &h74 ' 0x01:  Int. V. on, preencher tela com Bg color = ligado (acelera limpeza por DMA), DMA Ligado, VDP = Modo Genesis
+	data &h30 ' 0x02:  Endereço do Plane A na VRAM = 0xC000 
+	data &h40 ' 0x03:  Endereço dao Plane Window na VRAM = 0x10000 (fora do range da Vram, ou seja, Desligado!) 
+	data &h07 ' 0x04:  Endereço do Plane B na VRAM = 0xE000 
+	data &h78 ' 0x05:  Sprite table na VRAM = 0xF000 
+	data &h00 ' 0x06:  Não usado (sprite table no modo 128K)
+	data &h00 ' 0x07:  Background color = Cor Zero da palheta Zero
+	data &h00 ' 0x08:  Não usado (HScroll Master System)
+	data &h00 ' 0x09:  Não usado (VScroll Master System)
+	data &h08 ' 0x0A:  Contador: Numero de scanlines entre as interrupções H Blank
+	data &h00 ' 0x0B:  Interrupções Externas Desligadas, Scrolling V. = tela inteira, scrolling H. = Tela Inteira
+	data &h81 ' 0x0C:  Shadows and highlights Desligado, Modo 320x480 = Desligado, Modo 40 Celulas = Ligado (320 x 224 screen res)
+	data &h3F ' 0x0D:  Tabela de scroll Horizontal na VRAM = 0xFC00 
+	data &h00 ' 0x0E:  Não Usado (Bit's 16 do endereço das Plane tables no modo 128K)
+	data &h02 ' 0x0F:  Reg. Autoincremento = 2 bytes (todas as tranferencias são Word wide, exceto o DMA Fill)
+	data &h01 ' 0x10:  Plane Table de 64x32 tiles
+	data &h00 ' 0x11:  Window Plane posição X = 0 
+	data &h00 ' 0x12:  Window Plane posição Y = 0	
+    data &h00 ' Apenas para encerrar a tabela em um endreço PAR!!!!!!

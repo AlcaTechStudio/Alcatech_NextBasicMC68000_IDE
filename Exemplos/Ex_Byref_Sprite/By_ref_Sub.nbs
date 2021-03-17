@@ -1,0 +1,356 @@
+imports"\system\genesis_header.asm" ' header de uma rom padrao de mega drive (deve ficar sempre no inicio) 
+
+std_init()
+
+load_cram_DMA(addressof(setas_cores),16,0)     'Carrega 16 cores na paleta Zero
+load_tiles_DMA(addressof(setas_sprites),32,1)  'Carrega 32 TILES na posição 1 da VRAM (nunca usar a posição Zero!)
+
+'Cria uma estrutura para armazenar os atributos do Sprite
+structure sprite_enum
+ dim tag as integer
+ dim x   as integer
+ dim y   as integer
+ dim gfx as integer
+ dim pal as integer
+end structure
+
+'Cria um novo elemento dessa estrutura
+dim sprite as new sprite_enum
+
+'Inicializa os valores
+sprite.tag = 0  'Numero do Sprite na Sprite list (0 ~ 79)
+sprite.x=150    'Posição horizontal (128 = 0 na tela)
+sprite.y=150    'Posição vertical   (128 = 0 na tela)
+sprite.gfx = 1  'Endereço dos graficos na Vram em Tiles
+sprite.pal = 0  'Paleta com a qual o sprite sera desenhado
+
+set_sprite_size(sprite.tag,3,3)
+set_sprite_gfx(sprite.tag,sprite.gfx,sprite.pal)
+
+
+' Direcoes nos Eixos Vertical e Horizontal 
+dim x as integer
+dim y as integer
+
+' Flag que indica quando o Vblank ocorreu (marca o inicio do proximo Frame)
+dim vb_flag as integer
+
+' Ativa as interrupções Globais (interrupcao por Vblank aciona do Padrão)
+Enable_global_int()
+
+do
+ 'Zera as variaveis que armazenam as direcoes na qual o sprite deve seguir 
+ x=0
+ y=0
+ 
+ 'Pula para o Subrotina que define as direções e os graficos aplicados ao sprite, com base nos inputsdo joystick passando as variaveis globais como referencia
+ joystick_thread(x,y,sprite.gfx)
+ 
+ 'Aplica as direcoes a posicao do sprite
+ sprite.x += x
+ sprite.y += y
+ 
+ 'Atualiza os dados na Sprite Table
+ set_sprite_gfx(sprite.tag,sprite.gfx,sprite.pal)
+ set_sprite_position(sprite.tag, sprite.x, sprite.y)
+ 
+ 'Atualiza a Sprite Table na Vram
+ update_sprite_table()
+ 
+ 'Espera o proximo Vblank
+ vb_flag = 1
+ while(vb_flag) : wend 
+loop
+
+'Os parametros são recebidos por referencia, o que indica que alterar o valor deles ira alterar o valor da variaveis passadas na chamada da subrotina
+' _x_  = x
+' _y_  = y
+'_gfx_ = sprite.gfx
+sub joystick_thread(byref _x_ as integer, byref _y_ as integer, byref _gfx_ as integer) 
+ 
+ dim j as integer = joypad6b_read(0) 'Lê o valor do Joystick 1 e salva na Variavel LOCAL J (variaveis locais são DESTRUIDAS ao termino da funcao onde são declaradas)
+ 
+ if bit_test(j, btn_up) then 'Botao Up pressionado?
+ _y_= -2                     'Y = -2
+ _gfx_ = 17                  'Sprite Seta pra cima (Endereço 17 na VRAM)
+ elseif bit_test(j, btn_down) then 'Se não: Botao down pressionado?
+ _y_=2                             'Y = 2
+ _gfx_ = 17 OR V_flip              'Sprite = Seta pra cima + Flip Vertical (seta pra baixo)
+ end if                            'fim Statement IF
+
+ if bit_test(j, btn_left) then 'Botao left pressionado?
+ _x_=-2                        'X = -2
+ _gfx_ = 1 or H_Flip           'Sprite = Seta para a direita + Flip Horizontal (seta para a esquerda)
+ elseif bit_test(j, btn_right) then'Se nao: Botao Right pressionado?
+ _x_=2                             'X = 2
+ _gfx_ = 1                         'Sprite = Seta para a Direita (Endereço 1 na VRAM)
+ end if                            'fim Statement IF
+end sub
+
+' Vblank
+sub isr_Vblank()
+ vb_flag = 0
+end sub
+
+imports "\system\genesis_std.nbs"
+
+setas_cores:
+	DATAINT	&h0000,&h020E,&h04A2,&h0C42,&h0000,&h0000,&h0000,&h0000
+	DATAINT	&h0000,&h0000,&h0000,&h0000,&h0000,&h0000,&h0000,&h0000
+setas_sprites:
+	DATALONG	&h11111111	' Tile #0
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11122222	' Tile #1
+	DATALONG	&h11122222
+	DATALONG	&h11122222
+	DATALONG	&h11122233
+	DATALONG	&h11122233
+	DATALONG	&h11122233
+	DATALONG	&h11122233
+	DATALONG	&h11122233
+	DATALONG	&h11122233	' Tile #2
+	DATALONG	&h11122233
+	DATALONG	&h11122233
+	DATALONG	&h11122233
+	DATALONG	&h11122222
+	DATALONG	&h11122222
+	DATALONG	&h11122222
+	DATALONG	&h11111111
+	DATALONG	&h11111111	' Tile #3
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111	' Tile #4
+	DATALONG	&h11111111
+	DATALONG	&h11111112
+	DATALONG	&h11111112
+	DATALONG	&h11111112
+	DATALONG	&h11111112
+	DATALONG	&h11111112
+	DATALONG	&h11111112
+	DATALONG	&h22222222	' Tile #5
+	DATALONG	&h22222222
+	DATALONG	&h22222222
+	DATALONG	&h33333333
+	DATALONG	&h33333333
+	DATALONG	&h33333333
+	DATALONG	&h33333333
+	DATALONG	&h33333333
+	DATALONG	&h33333333	' Tile #6
+	DATALONG	&h33333333
+	DATALONG	&h33333333
+	DATALONG	&h33333333
+	DATALONG	&h22222222
+	DATALONG	&h22222222
+	DATALONG	&h22222222
+	DATALONG	&h11111112
+	DATALONG	&h11111112	' Tile #7
+	DATALONG	&h11111112
+	DATALONG	&h11111112
+	DATALONG	&h11111112
+	DATALONG	&h11111112
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111	' Tile #8
+	DATALONG	&h11111111
+	DATALONG	&h22111111
+	DATALONG	&h22211111
+	DATALONG	&h22221111
+	DATALONG	&h22222111
+	DATALONG	&h22222211
+	DATALONG	&h22222221
+	DATALONG	&h22322222	' Tile #9
+	DATALONG	&h22332222
+	DATALONG	&h22333222
+	DATALONG	&h33333322
+	DATALONG	&h33333332
+	DATALONG	&h33333333
+	DATALONG	&h33333333
+	DATALONG	&h33333333
+	DATALONG	&h33333333	' Tile #10
+	DATALONG	&h33333333
+	DATALONG	&h33333332
+	DATALONG	&h33333322
+	DATALONG	&h22333222
+	DATALONG	&h22332222
+	DATALONG	&h22322222
+	DATALONG	&h22222221
+	DATALONG	&h22222211	' Tile #11
+	DATALONG	&h22222111
+	DATALONG	&h22221111
+	DATALONG	&h22211111
+	DATALONG	&h22111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111	' Tile #12
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111	' Tile #13
+	DATALONG	&h21111111
+	DATALONG	&h22111111
+	DATALONG	&h22211111
+	DATALONG	&h22221111
+	DATALONG	&h22222111
+	DATALONG	&h32222211
+	DATALONG	&h33222211
+	DATALONG	&h32222211	' Tile #14
+	DATALONG	&h22222111
+	DATALONG	&h22221111
+	DATALONG	&h22211111
+	DATALONG	&h22111111
+	DATALONG	&h21111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111	' Tile #15
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111	' Tile #16
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111	' Tile #17
+	DATALONG	&h11111111
+	DATALONG	&h11111112
+	DATALONG	&h11111122
+	DATALONG	&h11111222
+	DATALONG	&h11112222
+	DATALONG	&h11122222
+	DATALONG	&h11122222
+	DATALONG	&h11122222	' Tile #18
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111	' Tile #19
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111	' Tile #20
+	DATALONG	&h11111111
+	DATALONG	&h11111112
+	DATALONG	&h11111122
+	DATALONG	&h11111222
+	DATALONG	&h11112222
+	DATALONG	&h11122222
+	DATALONG	&h11222223
+	DATALONG	&h12222233	' Tile #21
+	DATALONG	&h22222333
+	DATALONG	&h22223333
+	DATALONG	&h22233333
+	DATALONG	&h22333333
+	DATALONG	&h23333333
+	DATALONG	&h22223333
+	DATALONG	&h22223333
+	DATALONG	&h22223333	' Tile #22
+	DATALONG	&h12223333
+	DATALONG	&h12223333
+	DATALONG	&h12223333
+	DATALONG	&h12223333
+	DATALONG	&h12223333
+	DATALONG	&h12223333
+	DATALONG	&h12223333
+	DATALONG	&h12223333	' Tile #23
+	DATALONG	&h12223333
+	DATALONG	&h12222222
+	DATALONG	&h12222222
+	DATALONG	&h12222222
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111	' Tile #24
+	DATALONG	&h11111111
+	DATALONG	&h22111111
+	DATALONG	&h22211111
+	DATALONG	&h22221111
+	DATALONG	&h22222111
+	DATALONG	&h32222211
+	DATALONG	&h33222221
+	DATALONG	&h33322222	' Tile #25
+	DATALONG	&h33332222
+	DATALONG	&h33333222
+	DATALONG	&h33333322
+	DATALONG	&h33333332
+	DATALONG	&h33333333
+	DATALONG	&h33333222
+	DATALONG	&h33333222
+	DATALONG	&h33333222	' Tile #26
+	DATALONG	&h33333222
+	DATALONG	&h33333222
+	DATALONG	&h33333222
+	DATALONG	&h33333222
+	DATALONG	&h33333222
+	DATALONG	&h33333222
+	DATALONG	&h33333222
+	DATALONG	&h33333222	' Tile #27
+	DATALONG	&h33333222
+	DATALONG	&h22222222
+	DATALONG	&h22222222
+	DATALONG	&h22222222
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111	' Tile #28
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111	' Tile #29
+	DATALONG	&h21111111
+	DATALONG	&h22111111
+	DATALONG	&h22211111
+	DATALONG	&h22221111
+	DATALONG	&h22222111
+	DATALONG	&h22222211
+	DATALONG	&h22222211
+	DATALONG	&h22222211	' Tile #30
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111	' Tile #31
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111
+	DATALONG	&h11111111

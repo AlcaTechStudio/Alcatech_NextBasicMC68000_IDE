@@ -1,0 +1,75 @@
+imports "\system\genesis_header.asm" ' Header de uma ROM de mega Drive Padrão (deve ficar sempre no topo)
+
+
+std_init()   'Inicializa o VDP
+print_init() 'Carrega a fonte para a VRAM
+
+
+dim dx as signed fixed 
+dim dy as signed fixed 
+dim radius as signed fixed = 20
+
+dim x as signed integer = 288
+dim y as signed integer = 240
+
+set_sprite_size(0,0,0)
+set_sprite_gfx(0,2,0)
+
+set_sprite_size(1,0,0)
+set_sprite_gfx(1,1,0)
+
+set_sprite_position(1,x,y)
+
+waitvbl = 0
+enable_global_int() 'Ativa interrupcoes globais
+
+
+angle = 0
+
+do
+ j = joypad6b_read(0)
+ 
+ if bit_test(j, btn_Right) then
+ radius+=1
+ elseif bit_test(j, btn_Left) then
+ radius-=1
+ end if
+ 
+ if bit_test(j, btn_Up) then
+ angle += 1
+ elseif bit_test(j, btn_Down) then
+ angle -=1
+ end if
+ 
+ angle &= 511
+ 
+ dx = (cos(angle) * radius)
+ dy = (sen(angle) * radius) 
+ 
+ set_cursor_position(0,0)
+ print("Seno  : ") : print_signed_fixed(dy) : print("     ")
+ set_cursor_position(0,1)
+ print("Coseno: ") : print_signed_fixed(dx) : print("     ")
+ set_cursor_position(0,2)
+ print("Raio  : ") : print_signed_fixed(radius) : print("     ")
+ set_cursor_position(0,3)
+ print("Angulo: ") : print_var(angle) : print("     ")
+ 
+ 
+ set_sprite_position(0, x+dx, y-dy)
+ 
+ 
+ waitvbl = 1
+ while(waitvbl)_asm("nop")
+
+loop
+
+sub isr_Vblank()
+update_sprite_table() 'Update sprite attribute table
+waitvbl=0
+end sub
+
+
+Imports "\system\genesis_std.nbs" ' Biblioteca contendo funções standard do Mega Drive
+Imports "\system\print_lib.nbs"   ' Inclui a funcao Print
+Imports "\system\fixed_trigonometry.nbs"        ' Trigonometria para matematica de ponto Fixo

@@ -1,0 +1,27 @@
+imports"\system\genesis_header.asm" ' Header de uma ROM de mega Drive Padrão (deve ficar sempre no topo)
+
+std_init()
+
+' Direct_Color_DMA permite exibir imagens de 198x224px com 512 cores simultaneas na tela 
+' durante um determinado numero de frames 
+
+' Esse exemplo requer um emulador que consiga reproduzir perfeitamente o hardware do Mega Drive
+' Então só funciona no Blastem, Exodus ou no Hardware real
+
+Do 'main
+direct_color_DMA(addressof(img1),60)
+direct_color_DMA(addressof(img2),60)
+direct_color_DMA(addressof(img3),60)
+Loop ' Laço infinito
+
+
+imports"\system\genesis_std.nbs" ' Biblioteca contendo funções standard do Mega Drives
+
+img1:
+imports"\image1.bin"  ' Cada imagem ocupa cerca de 88Kbytes de Memoria
+' A imagem não pode ultrapassar os limites de chunks de 128Kb de memoria, então é necessario definir manualmente os endereços
+img2:
+imports"\image2.bin,-o 20000 "
+'A imagem não pode ultrapassar os limites de chunks de 128Kb de memoria, então é necessario definir manualmente os endereços
+img3:
+imports"\image3.bin,-o 40000"

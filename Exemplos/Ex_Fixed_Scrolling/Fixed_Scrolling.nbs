@@ -1,0 +1,73 @@
+imports"\system\genesis_header.asm" ' Header de uma ROM de mega Drive Padrão (deve ficar sempre no topo)
+
+
+std_init()
+print_init()
+set_text_plane(Plane_B)
+' Carrega os tiles e a paleta de cores para a VRAM e CRAM
+load_tiles_dma(addressof(tile_data),912,256) ' 0~255 Tabela ASCII
+load_cram_dma(addressof(forest_32_pal),32,1) ' Paleta 0 usada para o comando Print 
+
+' Desenha a imagem na Tela
+for y = 0 to 24
+ for x = 0 to 64
+ draw_tile( (peek(addressof(tile_map_A) + ((x + (y*64))*2) as word) or palette_1) + 256, x,y, Plane_A)
+ next 
+next  
+for y = 0 to 24
+ for x = 0 to 64
+ draw_tile( (peek(addressof(tile_map_B) + ((x + (y*64))*2) as word) or palette_2 )+ 256, x,y, Plane_B)
+ next 
+next  
+
+' Valores Fixed vão de 0.00 até 511.99 Unsigned
+dim scroll_instant_vel as fixed = 0 'Velocity
+dim aceleration as fixed = 0.01     'Aceleration
+dim scroll_pos  as fixed = 0        'Position
+
+enable_global_int()
+
+
+Do 'main
+  
+  j = joypad6b_read(0)
+  
+  if j.btn_right then               ' Right to speed up
+  scroll_instant_vel += aceleration  
+  elseif not(j.btn_up) then         ' Up to conserve speed
+  if _fixed(scroll_instant_vel <= 0.02) then scroll_instant_vel = 0 else scroll_instant_vel -= aceleration ' Else = slow down
+  end if
+  
+  set_cursor_position(0,25)
+  print("Velocity:        ")  
+  set_cursor_position(10,25)
+  print_fixed(scroll_instant_vel)
+  print(" Pixels per Frame   ")
+  scroll_pos += scroll_instant_vel
+  
+  Set_HorizontalScroll_position(scroll_pos,Plane_A)
+  
+  flag_vbl = 1
+  while(flag_vbl) : wend
+
+Loop ' Laço infinito
+
+sub isr_vblank()
+ flag_vbl = 0
+end sub
+
+
+
+imports"\system\genesis_std.nbs" ' Biblioteca contendo funções standard do Mega Drive
+imports"\system\print_lib.nbs"
+tile_map_A:
+imports"\gfx_data\forest_tmap_A.bin"
+tile_map_B:
+imports"\gfx_data\forest_tmap_A.bin"
+tile_data:
+imports"\gfx_data\forest_64x24_tiles.bin"
+forest_32_pal:
+	DATAINT	&h0200,&h0200,&h0222,&h0442,&h0422,&h0242,&h0444,&h0644	' Pallette #0
+	DATAINT	&h0664,&h0866,&h0666,&h0000,&h0886,&h0A88,&h0464,&h0686
+	DATAINT	&h0000,&h0486,&h0000,&h0000,&h0000,&h0000,&h0000,&h0000	' Pallette #1
+	DATAINT	&h0000,&h0000,&h0000,&h0000,&h0000,&h0000,&h0000,&h0000

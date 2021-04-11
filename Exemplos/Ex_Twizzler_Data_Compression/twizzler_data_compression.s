@@ -4,10 +4,10 @@ align macro
 end_global_table equ $ff0628
 ;dim ram_pointer as long
 _global_ram_pointer equ $ff0000
-; Auto Declaracao variavel -> waitvb=0
-_global_waitvb equ $ff0004
-; Auto Declaracao variavel -> j = joypad6b_read(0)
-_global_j equ $ff0006
+; Auto Declaracao variavel -> for y = 0 to 8
+_global_y equ $ff0004
+; Auto Declaracao variavel ->  for x =0 to 7
+_global_x equ $ff0006
 ;dim sprite_table[80] as new sprite_shape 'Buffer para a Sprite Table na RAM
 _global_sprite_table equ $ff0008
 ;dim buff_dma[3] as long ' Buffer na RAM que serve de construtor para os comandos do DMA
@@ -28,6 +28,24 @@ _global__print_cursor equ $ff0622
 _global__print_plane equ $ff0624
 ;dim _print_pallet as integer
 _global__print_pallet equ $ff0626
+;#const TwizHuffRetMax	=	&h12
+TwizHuffRetMax equ $12
+;#const TwizHuffCopyMax	=	&h0C
+TwizHuffCopyMax equ $0C
+;#const TwizHuffRet		=	&hFFFFAA00							' $48 bytes
+TwizHuffRet equ $FFFFAA00
+;#const TwizHuffCopy		=	TwizHuffRet+(TwizHuffRetMax*&h04)	' $18 bytes
+TwizHuffCopy equ (TwizHuffRet+(TwizHuffRetMax*$04))
+;#const TwizVRAM			=	TwizHuffCopy+(TwizHuffCopyMax*&h02)	' $4 bytes
+TwizVRAM equ (TwizHuffCopy+(TwizHuffCopyMax*$02))
+;#const TwizSize			=	TwizVRAM+&h04						' $2 bytes
+TwizSize equ (TwizVRAM+$04)
+;#const TwizBufferSize	=	&h1000
+TwizBufferSize equ $1000
+;#const TwizBufferPre	=	&hFFFF8400							' $1000 bytes
+TwizBufferPre equ $FFFF8400
+;#const TwizBuffer		=	&hFFFF9400							' $1000 bytes
+TwizBuffer equ $FFFF9400
 
 ;------------------------
 ;  Header Vector Table  -
@@ -68,133 +86,286 @@ _global__print_pallet equ $ff0626
     dc.l trap_14_vector
     dc.l trap_15_vector
 
-    ;imports"\system\genesis_header.asm" ' Header de uma ROM de mega Drive Padrao (deve ficar sempre no topo)
+    ;imports "\system\genesis_header.asm" ' Header de uma ROM de mega Drive Padrao (deve ficar sempre no topo)
     include "C:\workbench\Alcatech_NextBasicMC68000_IDE\utils\system\genesis_header.asm"
 
-    ;std_init()
+    ;std_init()   'Inicializa o VDP
     bsr std_init
 
-    ;print_init()
+    ;print_init() 'Carrega a fonte para a VRAM
     bsr print_init
 
-    ;println("Pressione Start")
-    move.l #const_string_0_,-(a7)
-    bsr println
-    addq #4,a7
+    ;load_cram_DMA_128ksafe(addressof(paletatiles),32,0)
+    move.l #0,-(a7)
+    move.w #32,-(a7)
+    move.l #paletatiles,-(a7)
+    bsr load_cram_DMA_128ksafe
+    lea 10(a7),a7
 
-    ;waitvb=0
-    move.w #0,_global_waitvb
+    ;twim_dec2VRAM(addressof(compressed_tiles), 256*32) 'Decompress and Load 232 tiles into Vram position 256
+    move.w #(256*32),-(a7)
+    move.l #compressed_tiles,-(a7)
+    bsr twim_dec2VRAM
+    addq #6,a7
 
-    ;enable_global_int()
-    bsr enable_global_int
+    ;for y = 0 to 8
+    moveq #0,d0
+    move.w d0,_global_y
+lbl_for_1_start:
+    move.w _global_y,d0
+    cmp.w #8,d0
+    beq lbl_for_1_end
 
-    ;Do 'main
-lbl_do_1_start:
+    ; for x =0 to 7
+    moveq #0,d0
+    move.w d0,_global_x
+lbl_for_2_start:
+    move.w _global_x,d0
+    cmp.w #7,d0
+    beq lbl_for_2_end
 
-    ;j = joypad6b_read(0)
-    move.w #0,-(a7)
-    bsr joypad6b_read
-    addq #2,a7
-    move.w d7,_global_j
-
-    ;  set_cursor_position(0,2)
-    move.w #2,-(a7)
-    move.w #0,-(a7)
-    bsr set_cursor_position
-    addq #4,a7
-
-    ;  print_var(j):print("      ")
-    move.w _global_j,-(a7)
-    bsr print_var
-    addq #2,a7
-
-    ;  print_var(j):print("      ")
-    move.l #const_string_1_,-(a7)
-    bsr print
-    addq #4,a7
-
-    ; if j.7 then
-    move.w _global_j,d0
-    btst #7,d0
-    sne d0
+    ;  if x + y*8 > 46 Then 
+    move.w _global_y,d0
+    lsl.w #3,d0
+    add.w _global_x,d0
+    cmp.w #46,d0
+    shi d0
     and.w #$01,d0
     dbra d0,lbl_if_true_1
     bra lbl_if_false_1
 lbl_if_true_1:
 
-    ;  if j.13 = j.7 then
-    move.w _global_j,d0
-    btst #13,d0
-    sne d0
-    and.w #$01,d0
-    move.w _global_j,d1
-    btst #7,d1
-    sne d1
-    and.w #$01,d1
-    cmp.w d1,d0
-    seq d0
-    and.w #$01,d0
-    dbra d0,lbl_if_true_2
-    bra lbl_if_false_2
-lbl_if_true_2:
-
-    ;   set_cursor_position(0,1)
-    move.w #1,-(a7)
+    ;   draw_tile( ((x*4) + (y*28)+256) or 1<<13, (x<<1)   , (y<<1)+4, 0 )
     move.w #0,-(a7)
-    bsr set_cursor_position
-    addq #4,a7
+    move.w _global_y,d0
+    add.w d0,d0
+    addq #4,d0
+    move.w d0,-(a7)
+    move.w _global_x,d0
+    add.w d0,d0
+    move.w d0,-(a7)
+    move.w _global_x,d0
+    add.w d0,d0
+    add.w d0,d0
+    move.w _global_y,d1
+    mulu #28,d1
+    add.w #256,d1
+    add.w d1,d0
+    or.w #(1<<13),d0
+    move.w d0,-(a7)
+    bsr draw_tile
+    addq #8,a7
 
-    ;   print("Controle de 3 botoes")
-    move.l #const_string_2_,-(a7)
+    ;   draw_tile( ((x*4) + (y*28)+257) or 1<<13, (x<<1)   , (y<<1)+5, 0 )
+    move.w #0,-(a7)
+    move.w _global_y,d0
+    add.w d0,d0
+    addq #5,d0
+    move.w d0,-(a7)
+    move.w _global_x,d0
+    add.w d0,d0
+    move.w d0,-(a7)
+    move.w _global_x,d0
+    add.w d0,d0
+    add.w d0,d0
+    move.w _global_y,d1
+    mulu #28,d1
+    add.w #257,d1
+    add.w d1,d0
+    or.w #(1<<13),d0
+    move.w d0,-(a7)
+    bsr draw_tile
+    addq #8,a7
+
+    ;   draw_tile( ((x*4) + (y*28)+258) or 1<<13, (x<<1)+1 , (y<<1)+4, 0 )
+    move.w #0,-(a7)
+    move.w _global_y,d0
+    add.w d0,d0
+    addq #4,d0
+    move.w d0,-(a7)
+    move.w _global_x,d0
+    add.w d0,d0
+    addq #1,d0
+    move.w d0,-(a7)
+    move.w _global_x,d0
+    add.w d0,d0
+    add.w d0,d0
+    move.w _global_y,d1
+    mulu #28,d1
+    add.w #258,d1
+    add.w d1,d0
+    or.w #(1<<13),d0
+    move.w d0,-(a7)
+    bsr draw_tile
+    addq #8,a7
+
+    ;   draw_tile( ((x*4) + (y*28)+259) or 1<<13, (x<<1)+1 , (y<<1)+5, 0 )
+    move.w #0,-(a7)
+    move.w _global_y,d0
+    add.w d0,d0
+    addq #5,d0
+    move.w d0,-(a7)
+    move.w _global_x,d0
+    add.w d0,d0
+    addq #1,d0
+    move.w d0,-(a7)
+    move.w _global_x,d0
+    add.w d0,d0
+    add.w d0,d0
+    move.w _global_y,d1
+    mulu #28,d1
+    add.w #259,d1
+    add.w d1,d0
+    or.w #(1<<13),d0
+    move.w d0,-(a7)
+    bsr draw_tile
+    addq #8,a7
+    bra lbl_if_end_1
+lbl_if_false_1:
+
+    ;  Else
+
+    ;   draw_tile( (x*4) + (y*28)+256, (x<<1)   , (y<<1)+4, 0 )
+    move.w #0,-(a7)
+    move.w _global_y,d0
+    add.w d0,d0
+    addq #4,d0
+    move.w d0,-(a7)
+    move.w _global_x,d0
+    add.w d0,d0
+    move.w d0,-(a7)
+    move.w _global_x,d0
+    add.w d0,d0
+    add.w d0,d0
+    move.w _global_y,d1
+    mulu #28,d1
+    add.w #256,d1
+    add.w d1,d0
+    move.w d0,-(a7)
+    bsr draw_tile
+    addq #8,a7
+
+    ;   draw_tile( (x*4) + (y*28)+257, (x<<1)   , (y<<1)+5, 0 )
+    move.w #0,-(a7)
+    move.w _global_y,d0
+    add.w d0,d0
+    addq #5,d0
+    move.w d0,-(a7)
+    move.w _global_x,d0
+    add.w d0,d0
+    move.w d0,-(a7)
+    move.w _global_x,d0
+    add.w d0,d0
+    add.w d0,d0
+    move.w _global_y,d1
+    mulu #28,d1
+    add.w #257,d1
+    add.w d1,d0
+    move.w d0,-(a7)
+    bsr draw_tile
+    addq #8,a7
+
+    ;   draw_tile( (x*4) + (y*28)+258, (x<<1)+1 , (y<<1)+4, 0 )
+    move.w #0,-(a7)
+    move.w _global_y,d0
+    add.w d0,d0
+    addq #4,d0
+    move.w d0,-(a7)
+    move.w _global_x,d0
+    add.w d0,d0
+    addq #1,d0
+    move.w d0,-(a7)
+    move.w _global_x,d0
+    add.w d0,d0
+    add.w d0,d0
+    move.w _global_y,d1
+    mulu #28,d1
+    add.w #258,d1
+    add.w d1,d0
+    move.w d0,-(a7)
+    bsr draw_tile
+    addq #8,a7
+
+    ;   draw_tile( (x*4) + (y*28)+259, (x<<1)+1 , (y<<1)+5, 0 )
+    move.w #0,-(a7)
+    move.w _global_y,d0
+    add.w d0,d0
+    addq #5,d0
+    move.w d0,-(a7)
+    move.w _global_x,d0
+    add.w d0,d0
+    addq #1,d0
+    move.w d0,-(a7)
+    move.w _global_x,d0
+    add.w d0,d0
+    add.w d0,d0
+    move.w _global_y,d1
+    mulu #28,d1
+    add.w #259,d1
+    add.w d1,d0
+    move.w d0,-(a7)
+    bsr draw_tile
+    addq #8,a7
+lbl_if_end_1:
+    moveq #1,d0
+    add.w d0,_global_x
+    bra lbl_for_2_start
+
+    ; next y
+lbl_for_2_end:
+    moveq #1,d0
+    add.w d0,_global_y
+    bra lbl_for_1_start
+
+    ;next x
+lbl_for_1_end:
+
+    ;print("Uncompressed Data: ") : print_var(_long(addressof(uncompressed_tiles_end) - addressof(uncompressed_tiles)) )
+    move.l #const_string_0_,-(a7)
     bsr print
     addq #4,a7
-    bra lbl_if_end_2
-lbl_if_false_2:
 
-    ;  else
+    ;print("Uncompressed Data: ") : print_var(_long(addressof(uncompressed_tiles_end) - addressof(uncompressed_tiles)) )
+    move.w #(uncompressed_tiles_end-uncompressed_tiles),-(a7)
+    bsr print_var
+    addq #2,a7
 
-    ;   set_cursor_position(0,1)
-    move.w #1,-(a7)
-    move.w #0,-(a7)
-    bsr set_cursor_position
+    ;Println(" Bytes") : Println(" ")
+    move.l #const_string_1_,-(a7)
+    bsr Println
     addq #4,a7
 
-    ;   print("Controle de 6 botoes")
+    ;Println(" Bytes") : Println(" ")
+    move.l #const_string_2_,-(a7)
+    bsr Println
+    addq #4,a7
+
+    ;print(" Compressed  Data: ") : print_var(_long(addressof(compressed_tiles_end)   - addressof(compressed_tiles))   )
     move.l #const_string_3_,-(a7)
     bsr print
     addq #4,a7
-lbl_if_end_2:
-    bra lbl_if_end_1
-lbl_if_false_1:
-lbl_if_end_1:
 
-    ;waitvb = 1
-    move.w #1,_global_waitvb
+    ;print(" Compressed  Data: ") : print_var(_long(addressof(compressed_tiles_end)   - addressof(compressed_tiles))   )
+    move.w #(compressed_tiles_end-compressed_tiles),-(a7)
+    bsr print_var
+    addq #2,a7
 
-    ;while(waitvb) : wend
-lbl_while_start_1:
-    tst.w _global_waitvb
-    bne lbl_while_true_1
-    bra lbl_while_false_1
-lbl_while_true_1:
-    bra lbl_while_start_1
+    ;Println(" Bytes") : Println(" ")
+    move.l #const_string_4_,-(a7)
+    bsr Println
+    addq #4,a7
 
-    ;while(waitvb) : wend
-lbl_while_false_1:
+    ;Println(" Bytes") : Println(" ")
+    move.l #const_string_5_,-(a7)
+    bsr Println
+    addq #4,a7
+
+    ;do 'Main
+lbl_do_1_start:
     bra lbl_do_1_start
 lbl_do_1_end:
 
-    ;Loop ' Laco infinito
-
-    ;sub isr_06_vector()
-isr_06_vector:
-
-    ;waitvb=0
-    move.w #0,_global_waitvb
-
-    rte
-
-    ;end sub
+    ;loop 'infinity Loop
 
     ;sub std_init()  
 std_init:
@@ -214,10 +385,10 @@ _local_i set -2
     ;  for i = 0 to 80
     moveq #0,d0
     move.w d0,(_local_i,a6)
-lbl_for_1_start:
+lbl_for_3_start:
     move.w (_local_i,a6),d0
     cmp.w #80,d0
-    beq lbl_for_1_end
+    beq lbl_for_3_end
 
     ;  sprite_table[i].x         = 0
     move.w (_local_i,a6),d0
@@ -246,10 +417,10 @@ lbl_for_1_start:
     move.w #0,0(a0,d0.w)
     moveq #1,d0
     add.w d0,(_local_i,a6)
-    bra lbl_for_1_start
+    bra lbl_for_3_start
 
     ;  next 
-lbl_for_1_end:
+lbl_for_3_end:
 
     ;  sprite_table[79].size_link = 0 ' Ultimo sprite desenhado deve apontar para o primeiro
     move.w #0,(_global_sprite_table+((79*8)+2))
@@ -257,10 +428,10 @@ lbl_for_1_end:
     ;  for i=0 to 448
     moveq #0,d0
     move.w d0,(_local_i,a6)
-lbl_for_2_start:
+lbl_for_4_start:
     move.w (_local_i,a6),d0
     cmp.w #448,d0
-    beq lbl_for_2_end
+    beq lbl_for_4_end
 
     ;  H_scroll_buff[i] = 0
     move.w (_local_i,a6),d0
@@ -269,10 +440,10 @@ lbl_for_2_start:
     move.w #0,0(a0,d0.w)
     moveq #1,d0
     add.w d0,(_local_i,a6)
-    bra lbl_for_2_start
+    bra lbl_for_4_start
 
     ;  next 
-lbl_for_2_end:
+lbl_for_4_end:
 
     ;  vdp_set_config(addressof(VDP_Std_Reg_init)) ' Envia configuracao padrao pro VDP
     move.l #VDP_Std_Reg_init,-(a7)
@@ -531,7 +702,7 @@ _local_jp set 8
 	or.b	d1,d0		
 	move.b  (A0),D1
 	move.b  #0,(A0)
-	andi.w	#$3F, d1
+	andi.w	#$0F, d1
 	lsl.w	#8, d1
 	or.w    D1,D0
 	not.w   d0
@@ -900,10 +1071,10 @@ _local__list_ set -2
     ; for _list_ = 0 to 80
     moveq #0,d0
     move.w d0,(_local__list_,a6)
-lbl_for_3_start:
+lbl_for_5_start:
     move.w (_local__list_,a6),d0
     cmp.w #80,d0
-    beq lbl_for_3_end
+    beq lbl_for_5_end
 
     ; sprite_table[ _list_ ].size_link = (sprite_table[_list_].size_link AND &HFF00) OR (_list_ +1)
     move.w (_local__list_,a6),d0
@@ -920,10 +1091,10 @@ lbl_for_3_start:
     move.w d2,2(a0,d0.w)
     moveq #1,d0
     add.w d0,(_local__list_,a6)
-    bra lbl_for_3_start
+    bra lbl_for_5_start
 
     ; next
-lbl_for_3_end:
+lbl_for_5_end:
 
     ; sprite_table[79].size_link = (sprite_table[79].size_link AND &HFF00) 'Ultimo Sprite deve apontar para o primeiro
     move.w (_global_sprite_table+((79*8)+2)),d0
@@ -1504,6 +1675,77 @@ _local__print_string set 8
     move.w d0,(_local_char,a6)
 
     ;  while(char<>0)
+lbl_while_start_1:
+    move.w (_local_char,a6),d0
+    tst.w d0
+    sne d0
+    and.w #$01,d0
+    dbra d0,lbl_while_true_1
+    bra lbl_while_false_1
+lbl_while_true_1:
+
+    ;  draw_tile(char OR _print_pallet, _print_cursor AND 63 , (_print_cursor / 64) ,_print_plane)
+    move.w _global__print_plane,-(a7)
+    move.w _global__print_cursor,d0
+    lsr.w #6,d0
+    move.w d0,-(a7)
+    move.w _global__print_cursor,d0
+    and.w #63,d0
+    move.w d0,-(a7)
+    move.w (_local_char,a6),d0
+    or.w _global__print_pallet,d0
+    move.w d0,-(a7)
+    bsr draw_tile
+    addq #8,a7
+
+    ;  _print_string +=1
+    moveq #1,d0
+    add.l d0,(_local__print_string,a6)
+
+    ;  _print_cursor +=1
+    moveq #1,d0
+    add.w d0,_global__print_cursor
+
+    ;  if _print_cursor > (64*32) then _print_cursor = 0
+    move.w _global__print_cursor,d0
+    cmp.w #(64*32),d0
+    shi d0
+    and.w #$01,d0
+    dbra d0,lbl_if_true_2
+    bra lbl_if_false_2
+lbl_if_true_2:
+
+    ;  if _print_cursor > (64*32) then _print_cursor = 0
+    move.w #0,_global__print_cursor
+lbl_if_false_2:
+
+    ;  char = peek(  _print_string as byte)
+    move.l (_local__print_string,a6),a0
+    moveq #0,d0
+    move.b (a0),d0
+    move.w d0,(_local_char,a6)
+    bra lbl_while_start_1
+
+    ;  end while
+lbl_while_false_1:
+    unlk a6 
+    rts
+
+    ;end sub
+
+    ;sub println(byval _print_string as long)
+println:
+;  dim char as integer = peek(  _print_string as byte)
+_local_char set -2
+    link a6,#-2
+; byval _local__print_string as long
+_local__print_string set 8
+    move.l (_local__print_string,a6),a0
+    moveq #0,d0
+    move.b (a0),d0
+    move.w d0,(_local_char,a6)
+
+    ;  while(char<>0)
 lbl_while_start_2:
     move.w (_local_char,a6),d0
     tst.w d0
@@ -1557,77 +1799,6 @@ lbl_if_false_3:
 
     ;  end while
 lbl_while_false_2:
-    unlk a6 
-    rts
-
-    ;end sub
-
-    ;sub println(byval _print_string as long)
-println:
-;  dim char as integer = peek(  _print_string as byte)
-_local_char set -2
-    link a6,#-2
-; byval _local__print_string as long
-_local__print_string set 8
-    move.l (_local__print_string,a6),a0
-    moveq #0,d0
-    move.b (a0),d0
-    move.w d0,(_local_char,a6)
-
-    ;  while(char<>0)
-lbl_while_start_3:
-    move.w (_local_char,a6),d0
-    tst.w d0
-    sne d0
-    and.w #$01,d0
-    dbra d0,lbl_while_true_3
-    bra lbl_while_false_3
-lbl_while_true_3:
-
-    ;  draw_tile(char OR _print_pallet, _print_cursor AND 63 , (_print_cursor / 64) ,_print_plane)
-    move.w _global__print_plane,-(a7)
-    move.w _global__print_cursor,d0
-    lsr.w #6,d0
-    move.w d0,-(a7)
-    move.w _global__print_cursor,d0
-    and.w #63,d0
-    move.w d0,-(a7)
-    move.w (_local_char,a6),d0
-    or.w _global__print_pallet,d0
-    move.w d0,-(a7)
-    bsr draw_tile
-    addq #8,a7
-
-    ;  _print_string +=1
-    moveq #1,d0
-    add.l d0,(_local__print_string,a6)
-
-    ;  _print_cursor +=1
-    moveq #1,d0
-    add.w d0,_global__print_cursor
-
-    ;  if _print_cursor > (64*32) then _print_cursor = 0
-    move.w _global__print_cursor,d0
-    cmp.w #(64*32),d0
-    shi d0
-    and.w #$01,d0
-    dbra d0,lbl_if_true_4
-    bra lbl_if_false_4
-lbl_if_true_4:
-
-    ;  if _print_cursor > (64*32) then _print_cursor = 0
-    move.w #0,_global__print_cursor
-lbl_if_false_4:
-
-    ;  char = peek(  _print_string as byte)
-    move.l (_local__print_string,a6),a0
-    moveq #0,d0
-    move.b (a0),d0
-    move.w d0,(_local_char,a6)
-    bra lbl_while_start_3
-
-    ;  end while
-lbl_while_false_3:
 
     ;  _print_cursor += 64 - (_print_cursor and 63) 
     move.w _global__print_cursor,d1
@@ -1657,30 +1828,30 @@ _local__print_val set 8
     tst.w d0
     seq d0
     and.w #$01,d0
-    dbra d0,lbl_if_true_5
-    bra lbl_if_false_5
-lbl_if_true_5:
+    dbra d0,lbl_if_true_4
+    bra lbl_if_false_4
+lbl_if_true_4:
 
     ; print("0") : return
-    move.l #const_string_4_,-(a7)
+    move.l #const_string_6_,-(a7)
     bsr print
     addq #4,a7
 
     ; print("0") : return
     unlk a6 
     rts
-    bra lbl_if_end_5
-lbl_if_false_5:
-lbl_if_end_5:
+    bra lbl_if_end_4
+lbl_if_false_4:
+lbl_if_end_4:
     move.w #0,(_local_flag_prnt,a6)
     move.w #10000,(_local_div_f,a6)
 
     ; while(div_f)
-lbl_while_start_4:
+lbl_while_start_3:
     tst.w (_local_div_f,a6)
-    bne lbl_while_true_4
-    bra lbl_while_false_4
-lbl_while_true_4:
+    bne lbl_while_true_3
+    bra lbl_while_false_3
+lbl_while_true_3:
 
     ; pars_ = _print_val / div_f
     moveq #0,d0
@@ -1691,9 +1862,9 @@ lbl_while_true_4:
     ; if pars_ OR flag_prnt then
     move.w (_local_pars_,a6),d0
     or.w (_local_flag_prnt,a6),d0
-    dbra d0,lbl_if_true_6
-    bra lbl_if_false_6
-lbl_if_true_6:
+    dbra d0,lbl_if_true_5
+    bra lbl_if_false_5
+lbl_if_true_5:
 
     ; flag_prnt = true
     move.w #1,(_local_flag_prnt,a6)
@@ -1722,16 +1893,16 @@ lbl_if_true_6:
     cmp.w #(64*32),d0
     shi d0
     and.w #$01,d0
-    dbra d0,lbl_if_true_7
-    bra lbl_if_false_7
-lbl_if_true_7:
+    dbra d0,lbl_if_true_6
+    bra lbl_if_false_6
+lbl_if_true_6:
 
     ; if _print_cursor > (64*32) then _print_cursor = 0
     move.w #0,_global__print_cursor
-lbl_if_false_7:
-    bra lbl_if_end_6
 lbl_if_false_6:
-lbl_if_end_6:
+    bra lbl_if_end_5
+lbl_if_false_5:
+lbl_if_end_5:
 
     ; _print_val -= pars_ * div_f
     move.w (_local_pars_,a6),d0
@@ -1743,10 +1914,10 @@ lbl_if_end_6:
     move.w (_local_div_f,a6),d0
     divu #10,d0
     move.w d0,(_local_div_f,a6)
-    bra lbl_while_start_4
+    bra lbl_while_start_3
 
     ; wend
-lbl_while_false_4:
+lbl_while_false_3:
     unlk a6 
     rts
 
@@ -1763,12 +1934,12 @@ _local__print_val set 8
     cmp.w #32768,d0
     shi d0
     and.w #$01,d0
-    dbra d0,lbl_if_true_8
-    bra lbl_if_false_8
-lbl_if_true_8:
+    dbra d0,lbl_if_true_7
+    bra lbl_if_false_7
+lbl_if_true_7:
 
     ; print("-")
-    move.l #const_string_5_,-(a7)
+    move.l #const_string_7_,-(a7)
     bsr print
     addq #4,a7
 
@@ -1779,13 +1950,13 @@ lbl_if_true_8:
     move.w d0,-(a7)
     bsr print_var
     addq #2,a7
-    bra lbl_if_end_8
-lbl_if_false_8:
+    bra lbl_if_end_7
+lbl_if_false_7:
 
     ; else 'Positivo
 
     ; print("+")
-    move.l #const_string_6_,-(a7)
+    move.l #const_string_8_,-(a7)
     bsr print
     addq #4,a7
 
@@ -1793,7 +1964,7 @@ lbl_if_false_8:
     move.w (_local__print_val,a6),-(a7)
     bsr print_var
     addq #2,a7
-lbl_if_end_8:
+lbl_if_end_7:
     unlk a6 
     rts
 
@@ -1812,10 +1983,10 @@ _local__print_val set 8
     ;  for k = 0 to 8
     moveq #0,d0
     move.w d0,(_local_k,a6)
-lbl_for_4_start:
+lbl_for_6_start:
     move.w (_local_k,a6),d0
     cmp.w #8,d0
-    beq lbl_for_4_end
+    beq lbl_for_6_end
 
     ;  _parse_bf[7-k] = _long( (_print_val AND (&hF << k*4))>>( k*4) )
     moveq #7,d0
@@ -1844,9 +2015,9 @@ lbl_for_4_start:
     shi d1
     and.b #$01,d1
     tst.b d1
-    bne lbl_if_true_9
-    bra lbl_if_false_9
-lbl_if_true_9:
+    bne lbl_if_true_8
+    bra lbl_if_false_8
+lbl_if_true_8:
 
     ;  if _byte(_parse_bf[7-k] > 9) then _parse_bf[7-k] += _char("7") else _parse_bf[7-k] += _char("0") 
     moveq #7,d0
@@ -1854,8 +2025,8 @@ lbl_if_true_9:
     add.w #_local__parse_bf,d0
     move.b #'7',d1
     add.b d1,0(a6,d0.w)
-    bra lbl_if_end_9
-lbl_if_false_9:
+    bra lbl_if_end_8
+lbl_if_false_8:
 
     ;  if _byte(_parse_bf[7-k] > 9) then _parse_bf[7-k] += _char("7") else _parse_bf[7-k] += _char("0") 
     moveq #7,d0
@@ -1863,19 +2034,19 @@ lbl_if_false_9:
     add.w #_local__parse_bf,d0
     move.b #'0',d1
     add.b d1,0(a6,d0.w)
-lbl_if_end_9:
+lbl_if_end_8:
     moveq #1,d0
     add.w d0,(_local_k,a6)
-    bra lbl_for_4_start
+    bra lbl_for_6_start
 
     ;  next k 
-lbl_for_4_end:
+lbl_for_6_end:
 
     ;  _parse_bf[8] = 0 'Caractere Null - Fim de string
     move.b #0,(_local__parse_bf+(8<<0),a6)
 
     ;  print("0x")
-    move.l #const_string_7_,-(a7)
+    move.l #const_string_9_,-(a7)
     bsr print
     addq #4,a7
 
@@ -1904,7 +2075,7 @@ _local__print_val set 8
     addq #2,a7
 
     ;  print(".")
-    move.l #const_string_8_,-(a7)
+    move.l #const_string_10_,-(a7)
     bsr print
     addq #4,a7
 
@@ -1921,15 +2092,15 @@ _local__print_val set 8
     cmp.w #(1280),d0
     scs d0
     and.w #$01,d0
-    dbra d0,lbl_if_true_10
-    bra lbl_if_false_10
-lbl_if_true_10:
+    dbra d0,lbl_if_true_9
+    bra lbl_if_false_9
+lbl_if_true_9:
 
     ;  if _fixed(_print_val < 10) then print("0") 
-    move.l #const_string_9_,-(a7)
+    move.l #const_string_11_,-(a7)
     bsr print
     addq #4,a7
-lbl_if_false_10:
+lbl_if_false_9:
 
     ;  print_var( _print_val)  
     move.w (_local__print_val,a6),d0
@@ -1954,12 +2125,12 @@ _local__print_val set 8
     cmp.w #255,d0
     shi d0
     and.w #$01,d0
-    dbra d0,lbl_if_true_11
-    bra lbl_if_false_11
-lbl_if_true_11:
+    dbra d0,lbl_if_true_10
+    bra lbl_if_false_10
+lbl_if_true_10:
 
     ;  print("-")
-    move.l #const_string_10_,-(a7)
+    move.l #const_string_12_,-(a7)
     bsr print
     addq #4,a7
 
@@ -1970,13 +2141,13 @@ lbl_if_true_11:
     move.w d0,-(a7)
     bsr print_fixed
     addq #2,a7
-    bra lbl_if_end_11
-lbl_if_false_11:
+    bra lbl_if_end_10
+lbl_if_false_10:
 
     ;  else 'Positivo
 
     ;  print("+")
-    move.l #const_string_11_,-(a7)
+    move.l #const_string_13_,-(a7)
     bsr print
     addq #4,a7
 
@@ -1984,23 +2155,117 @@ lbl_if_false_11:
     move.w (_local__print_val,a6),-(a7)
     bsr print_fixed
     addq #2,a7
-lbl_if_end_11:
+lbl_if_end_10:
     unlk a6 
     rts
 
     ; end sub
+
+    ;sub twim_dec2VRAM( byval __data__addr_ as long, byval __data__dest_ as integer)
+twim_dec2VRAM:
+    link a6,#-0
+; byval _local___data__addr_ as long
+_local___data__addr_ set 8
+; byval _local___data__dest_ as word
+_local___data__dest_ set 12
+
+    ;_asm_block #__
+    		move.l (_local___data__addr_, A6),A0
+		move.w (_local___data__dest_, A6),D0
+        lea	($C00000).l,a5				; load VDP data port
+		move.w	#$4020,(TwizVRAM).w			; prepare DMA bit & VRAM write mode bits
+		move.w	d0,(TwizVRAM+$02).w			; store VRAM address
+		moveq	#$00,d2					; reset field counter
+		bsr.s	TD_Setup				; setup registers/huffman tables
+		lea	(TwizBuffer).w,a1			; load buffer address
+		lea	-TwizBufferSize(a1),a4			; ''
+		moveq	#$00,d5					; clear remaining counter
+		move.w	d1,(TwizSize).w				; store total size
+		moveq	#$00,d1					; clear d1
+		bra.s	TDM_GetSize				; continue into loop
+
+TDM_FullBuffer:
+		bsr.w	TD_DecompTwim				; decompress data
+		bsr.w	TD_Flush				; flush data to VRAM
+		move.w	a1,d1					; load current buffer address
+		subi.w	#(TwizBuffer&$FFFF),d1			; subtract starting offset
+		andi.w	#$0001,d1				; get only odd/even bit
+		neg.w	d1					; reverse to negative
+
+TDM_GetSize:
+		add.w	#(TwizBufferSize&$FFFE),d1		; set buffer size
+		sub.w	d1,(TwizSize).w				; subtract from total size
+		bcc.s	TDM_FullBuffer				; if the total size is larger than the buffer, branch
+		add.w	(TwizSize).w,d1				; set size to remaining total
+		bsr.w	TD_DecompTwim				; decompress data
+		bsr.w	TD_Flush				; flush data to VRAM 
+
+
+    ;__# _asm_block_end
+    unlk a6 
+    rts
+
+    ;end sub
+
+    ;sub twiz_dec2RAM( byval __data__addr_ as long, byval __data__dest_ as long)
+twiz_dec2RAM:
+    link a6,#-0
+; byval _local___data__addr_ as long
+_local___data__addr_ set 8
+; byval _local___data__dest_ as long
+_local___data__dest_ set 12
+
+    ;_asm("move.l (_local___data__addr_, A6),A0")
+    move.l (_local___data__addr_, A6),A0
+
+    ;_asm("move.l (_local___data__dest_, A6),A1")
+    move.l (_local___data__dest_, A6),A1
+
+    ;_asm("moveq #0,d2")
+    moveq #0,d2
+
+    ;_asm("bsr.s TD_Setup")
+    bsr.s TD_Setup
+
+    ;_asm("bsr.w TD_DecompTwiz")
+    bsr.w TD_DecompTwiz
+    unlk a6 
+    rts
+
+    ;end sub
+
+    ;imports "\system\twizzler_algorithm.asm"
+    include "C:\workbench\Alcatech_NextBasicMC68000_IDE\utils\system\twizzler_algorithm.asm"
+
+    ;imports"\assets\tile_set.twim"
+    even
+compressed_tiles:
+    incbin "C:\workbench\Alcatech_NextBasicMC68000_IDE\Exemplos\Ex_Twizzler_Data_Compression\assets\tile_set.twim" 
+compressed_tiles_end:
+
+    ;imports"\assets\tile_set.bin"	
+    even
+uncompressed_tiles:
+    incbin "C:\workbench\Alcatech_NextBasicMC68000_IDE\Exemplos\Ex_Twizzler_Data_Compression\assets\tile_set.bin" 
+uncompressed_tiles_end:
     even
 const_string_0_:
-    dc.b "Pressione Start",0
+    dc.b "Uncompressed Data: ",0
     even
 const_string_1_:
-    dc.b "      ",0
+    dc.b " Bytes",0
     even
 const_string_2_:
-    dc.b "Controle de 3 botoes",0
+    dc.b " ",0
     even
 const_string_3_:
-    dc.b "Controle de 6 botoes",0
+    dc.b " Compressed  Data: ",0
+    even
+const_string_4_:
+    dc.b " Bytes",0
+    even
+const_string_5_:
+    dc.b " ",0
     even
 VDP_std_Reg_init:
     dc.b $04
@@ -2024,34 +2289,40 @@ VDP_std_Reg_init:
     dc.b $00
     dc.b $00
     even
-const_string_4_:
-    dc.b "0",0
-    even
-const_string_5_:
-    dc.b "-",0
-    even
 const_string_6_:
-    dc.b "+",0
+    dc.b "0",0
     even
 const_string_7_:
-    dc.b "0x",0
-    even
-const_string_8_:
-    dc.b ".",0
-    even
-const_string_9_:
-    dc.b "0",0
-    even
-const_string_10_:
     dc.b "-",0
     even
+const_string_8_:
+    dc.b "+",0
+    even
+const_string_9_:
+    dc.b "0x",0
+    even
+const_string_10_:
+    dc.b ".",0
+    even
 const_string_11_:
+    dc.b "0",0
+    even
+const_string_12_:
+    dc.b "-",0
+    even
+const_string_13_:
     dc.b "+",0
 
     ;imports "\system\font_msxBR_8x8.bin , -f , -e"
     even
 font_lbl_prtn:
     incbin "C:\workbench\Alcatech_NextBasicMC68000_IDE\utils\system\font_msxbr_8x8.bin " 
+    even
+paletatiles:
+    dc.w $0000,$00A0,$0E22,$0400,$002C,$0006,$0EA2,$02CE
+    dc.w $0046,$0040,$0C0C,$0606,$0666,$0660,$0CEE,$00C0
+    dc.w $0000,$0000,$068E,$046A,$0268,$0EEE,$0888,$0AAA
+    dc.w $0CCC,$0666,$0444,$0222,$0246,$06AE,$04EE,$0024
     even    
 isr_01_vector:
     rte
@@ -2062,6 +2333,8 @@ isr_03_vector:
 isr_04_vector:
     rte
 isr_05_vector:
+    rte
+isr_06_vector:
     rte
 isr_07_vector:
     rte

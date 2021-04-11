@@ -1,7 +1,19 @@
+'--------------------------------------------------------------------------------
+#const TwizHuffRetMax	=	&h12
+#const TwizHuffCopyMax	=	&h0C
+#const TwizHuffRet		=	&hFFFFAA00							' $48 bytes
+#const TwizHuffCopy		=	TwizHuffRet+(TwizHuffRetMax*&h04)	' $18 bytes
+#const TwizVRAM			=	TwizHuffCopy+(TwizHuffCopyMax*&h02)	' $4 bytes
+#const TwizSize			=	TwizVRAM+&h04						' $2 bytes
+#const TwizBufferSize	=	&h1000
+#const TwizBufferPre	=	&hFFFF8400							' $1000 bytes
+#const TwizBuffer		=	&hFFFF9400							' $1000 bytes
+' -------------------------------------------------------------------------------
 
-
-sub twim_dec2VRAM( byval __data__addr_ as long, byval __data__dest__ as integer)
+sub twim_dec2VRAM( byval __data__addr_ as long, byval __data__dest_ as integer)
  _asm_block #__
+		move.l (_local___data__addr_, A6),A0
+		move.w (_local___data__dest_, A6),D0
         lea	($C00000).l,a5				; load VDP data port
 		move.w	#$4020,(TwizVRAM).w			; prepare DMA bit & VRAM write mode bits
 		move.w	d0,(TwizVRAM+$02).w			; store VRAM address
@@ -30,17 +42,14 @@ TDM_GetSize:
 		bsr.w	TD_DecompTwim				; decompress data
 		bsr.w	TD_Flush				; flush data to VRAM 
  __# _asm_block_end
-
 end sub
 
 sub twiz_dec2RAM( byval __data__addr_ as long, byval __data__dest_ as long)
-
 _asm("move.l (_local___data__addr_, A6),A0")
 _asm("move.l (_local___data__dest_, A6),A1")
 _asm("moveq #0,d2")
 _asm("bsr.s TD_Setup")
 _asm("bsr.w TD_DecompTwiz")
-
 end sub
 
 imports "\system\twizzler_algorithm.asm"

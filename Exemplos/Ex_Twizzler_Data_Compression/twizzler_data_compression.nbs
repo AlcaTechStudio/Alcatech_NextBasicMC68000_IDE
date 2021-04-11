@@ -1,0 +1,56 @@
+imports "\system\genesis_header.asm" ' Header de uma ROM de mega Drive Padrão (deve ficar sempre no topo)
+
+std_init()   'Inicializa o VDP
+print_init() 'Carrega a fonte para a VRAM
+
+load_cram_DMA_128ksafe(addressof(paletatiles),32,0)
+
+'Decompress and Load 204 tiles into Vram position 256
+twim_dec2VRAM(addressof(compressed_tiles), 256*32) 
+
+for y = 0 to 8
+ for x =0 to 7
+  if x + y*8 > 46 Then 
+   draw_tile( ((x*4) + (y*28)+256) or palette_1, (x<<1)   , (y<<1)+4, Plane_A )
+   draw_tile( ((x*4) + (y*28)+257) or palette_1, (x<<1)   , (y<<1)+5, Plane_A )
+   draw_tile( ((x*4) + (y*28)+258) or palette_1, (x<<1)+1 , (y<<1)+4, Plane_A )
+   draw_tile( ((x*4) + (y*28)+259) or palette_1, (x<<1)+1 , (y<<1)+5, Plane_A )
+  Else
+   draw_tile( (x*4) + (y*28)+256, (x<<1)   , (y<<1)+4, Plane_A )
+   draw_tile( (x*4) + (y*28)+257, (x<<1)   , (y<<1)+5, Plane_A )
+   draw_tile( (x*4) + (y*28)+258, (x<<1)+1 , (y<<1)+4, Plane_A )
+   draw_tile( (x*4) + (y*28)+259, (x<<1)+1 , (y<<1)+5, Plane_A )
+  end if
+ next y
+next x
+
+print("Uncompressed Data: ") : print_var(_long(addressof(uncompressed_tiles_end) - addressof(uncompressed_tiles)) )
+Println(" Bytes") : Println(" ")
+print(" Compressed  Data: ") : print_var(_long(addressof(compressed_tiles_end)   - addressof(compressed_tiles))   )
+Println(" Bytes") : Println(" ")
+
+
+do 'Main
+
+loop 'infinity Loop
+
+
+Imports "\system\genesis_std.nbs" ' Biblioteca contendo funções standard do Mega Drive
+Imports "\system\print_lib.nbs"   ' Inclui a funcao Print
+imports "\system\twizzler.nbs"	   'Twizzler compress library
+
+'Dangerous Dave Complete Tile Set
+
+compressed_tiles:
+imports"\assets\tile_set.twim"
+compressed_tiles_end:
+
+uncompressed_tiles:
+imports"\assets\tile_set.bin"	
+uncompressed_tiles_end:
+
+paletatiles:
+	DATAINT	&H0000,&H00A0,&H0E22,&H0400,&H002C,&H0006,&H0EA2,&H02CE
+	DATAINT	&H0046,&H0040,&H0C0C,&H0606,&H0666,&H0660,&H0CEE,&H00C0
+	DATAINT	&H0000,&H0000,&H068E,&H046A,&H0268,&H0EEE,&H0888,&H0AAA
+	DATAINT	&H0CCC,&H0666,&H0444,&H0222,&H0246,&H06AE,&H04EE,&H0024

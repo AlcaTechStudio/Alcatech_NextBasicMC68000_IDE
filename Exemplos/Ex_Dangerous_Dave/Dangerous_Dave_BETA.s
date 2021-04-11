@@ -3000,7 +3000,8 @@ _local_jp set 8
     move.w (_local_jp,a6),D1
 
     ;_asm_block #__
-    	move.l  #$A10003,A0
+    	moveq #0,D0
+    move.l  #$A10003,A0
     add.w   D1,D1
 	add.w   D1,A0	
 	move.b  #$40,6(a0);(0xA10009)
@@ -3019,9 +3020,9 @@ _local_jp set 8
 	lsl.b	#$2,d1		
 	move.b	#$40,(a0)
 	or.b	d1,d0		
-	move.b  (A0),D1
+	move.b  (a0),D1
 	move.b  #0,(A0)
-	andi.w	#$0F, d1
+	ori.w	#$FFF0, d1
 	lsl.w	#8, d1
 	or.w    D1,D0
 	not.w   d0
@@ -3915,67 +3916,67 @@ _local_nframes set 8
     ;imports"\assets\tile_sets\numbers.bin"
     even
 numeros:
-    incbin "C:\Users\Alca_Tech\Desktop\NEXTBasic_Build_18_12_2020\Exemplos\Ex_Dangerous_Dave\assets\tile_sets\numbers.bin" 
+    incbin "C:\workbench\Alcatech_NextBasicMC68000_IDE\Exemplos\Ex_Dangerous_Dave\assets\tile_sets\numbers.bin" 
 
     ;imports"\assets\tile_sets\tilepal1.bin"
     even
 tiles:
-    incbin "C:\Users\Alca_Tech\Desktop\NEXTBasic_Build_18_12_2020\Exemplos\Ex_Dangerous_Dave\assets\tile_sets\tilepal1.bin" 
+    incbin "C:\workbench\Alcatech_NextBasicMC68000_IDE\Exemplos\Ex_Dangerous_Dave\assets\tile_sets\tilepal1.bin" 
 
     ;imports"\assets\tile_sets\tilepal0.bin"	
     even
-    incbin "C:\Users\Alca_Tech\Desktop\NEXTBasic_Build_18_12_2020\Exemplos\Ex_Dangerous_Dave\assets\tile_sets\tilepal0.bin" 
+    incbin "C:\workbench\Alcatech_NextBasicMC68000_IDE\Exemplos\Ex_Dangerous_Dave\assets\tile_sets\tilepal0.bin" 
 
     ;imports"\assets\sprite_sheets\dave.bin"
     even
 dave_data:
-    incbin "C:\Users\Alca_Tech\Desktop\NEXTBasic_Build_18_12_2020\Exemplos\Ex_Dangerous_Dave\assets\sprite_sheets\dave.bin" 
+    incbin "C:\workbench\Alcatech_NextBasicMC68000_IDE\Exemplos\Ex_Dangerous_Dave\assets\sprite_sheets\dave.bin" 
 
     ;imports"\assets\tile_maps\level1.bin"
     even
 levels_:
-    incbin "C:\Users\Alca_Tech\Desktop\NEXTBasic_Build_18_12_2020\Exemplos\Ex_Dangerous_Dave\assets\tile_maps\level1.bin" 
+    incbin "C:\workbench\Alcatech_NextBasicMC68000_IDE\Exemplos\Ex_Dangerous_Dave\assets\tile_maps\level1.bin" 
 
     ;imports"\assets\tile_maps\level2.bin"
     even
-    incbin "C:\Users\Alca_Tech\Desktop\NEXTBasic_Build_18_12_2020\Exemplos\Ex_Dangerous_Dave\assets\tile_maps\level2.bin" 
+    incbin "C:\workbench\Alcatech_NextBasicMC68000_IDE\Exemplos\Ex_Dangerous_Dave\assets\tile_maps\level2.bin" 
 
     ;imports"\assets\tile_maps\level3.bin"
     even
-    incbin "C:\Users\Alca_Tech\Desktop\NEXTBasic_Build_18_12_2020\Exemplos\Ex_Dangerous_Dave\assets\tile_maps\level3.bin" 
+    incbin "C:\workbench\Alcatech_NextBasicMC68000_IDE\Exemplos\Ex_Dangerous_Dave\assets\tile_maps\level3.bin" 
 
     ;imports"\assets\tile_maps\level4.bin"
     even
-    incbin "C:\Users\Alca_Tech\Desktop\NEXTBasic_Build_18_12_2020\Exemplos\Ex_Dangerous_Dave\assets\tile_maps\level4.bin" 
+    incbin "C:\workbench\Alcatech_NextBasicMC68000_IDE\Exemplos\Ex_Dangerous_Dave\assets\tile_maps\level4.bin" 
 
     ;imports"\assets\tile_maps\level5.bin"
     even
-    incbin "C:\Users\Alca_Tech\Desktop\NEXTBasic_Build_18_12_2020\Exemplos\Ex_Dangerous_Dave\assets\tile_maps\level5.bin" 
+    incbin "C:\workbench\Alcatech_NextBasicMC68000_IDE\Exemplos\Ex_Dangerous_Dave\assets\tile_maps\level5.bin" 
 
     ;imports"\assets\tile_maps\level6.bin"
     even
-    incbin "C:\Users\Alca_Tech\Desktop\NEXTBasic_Build_18_12_2020\Exemplos\Ex_Dangerous_Dave\assets\tile_maps\level6.bin" 
+    incbin "C:\workbench\Alcatech_NextBasicMC68000_IDE\Exemplos\Ex_Dangerous_Dave\assets\tile_maps\level6.bin" 
 
     ;imports"\assets\tile_maps\level7.bin"
     even
-    incbin "C:\Users\Alca_Tech\Desktop\NEXTBasic_Build_18_12_2020\Exemplos\Ex_Dangerous_Dave\assets\tile_maps\level7.bin" 
+    incbin "C:\workbench\Alcatech_NextBasicMC68000_IDE\Exemplos\Ex_Dangerous_Dave\assets\tile_maps\level7.bin" 
 
     ;imports"\assets\tile_maps\level8.bin"
     even
-    incbin "C:\Users\Alca_Tech\Desktop\NEXTBasic_Build_18_12_2020\Exemplos\Ex_Dangerous_Dave\assets\tile_maps\level8.bin" 
+    incbin "C:\workbench\Alcatech_NextBasicMC68000_IDE\Exemplos\Ex_Dangerous_Dave\assets\tile_maps\level8.bin" 
 
     ;imports"\assets\tile_maps\level9.bin"
     even
-    incbin "C:\Users\Alca_Tech\Desktop\NEXTBasic_Build_18_12_2020\Exemplos\Ex_Dangerous_Dave\assets\tile_maps\level9.bin" 
+    incbin "C:\workbench\Alcatech_NextBasicMC68000_IDE\Exemplos\Ex_Dangerous_Dave\assets\tile_maps\level9.bin" 
 
     ;imports"\assets\tile_maps\level10.bin"
     even
-    incbin "C:\Users\Alca_Tech\Desktop\NEXTBasic_Build_18_12_2020\Exemplos\Ex_Dangerous_Dave\assets\tile_maps\level10.bin" 
+    incbin "C:\workbench\Alcatech_NextBasicMC68000_IDE\Exemplos\Ex_Dangerous_Dave\assets\tile_maps\level10.bin" 
 
     ;imports"\assets\colision_map\colision_maps.bin"
     even
 colision_map:
-    incbin "C:\Users\Alca_Tech\Desktop\NEXTBasic_Build_18_12_2020\Exemplos\Ex_Dangerous_Dave\assets\colision_map\colision_maps.bin" 
+    incbin "C:\workbench\Alcatech_NextBasicMC68000_IDE\Exemplos\Ex_Dangerous_Dave\assets\colision_map\colision_maps.bin" 
     even
 VDP_std_Reg_init:
     dc.b $04

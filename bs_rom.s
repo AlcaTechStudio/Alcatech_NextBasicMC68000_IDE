@@ -1,33 +1,23 @@
 align macro
      cnop 0,\1
      endm
-end_global_table equ $ff0628
+end_global_table equ $ff061e
 ;dim ram_pointer as long
 _global_ram_pointer equ $ff0000
-; Auto Declaracao variavel -> waitvb=0
-_global_waitvb equ $ff0004
-; Auto Declaracao variavel -> j = joypad6b_read(0)
-_global_j equ $ff0006
 ;dim sprite_table[80] as new sprite_shape 'Buffer para a Sprite Table na RAM
-_global_sprite_table equ $ff0008
+_global_sprite_table equ $ff0004
 ;dim buff_dma[3] as long ' Buffer na RAM que serve de construtor para os comandos do DMA
-_global_buff_dma equ $ff0288
+_global_buff_dma equ $ff0284
 ;dim H_scroll_buff[448] as integer ' Buffer para a  scroll table
-_global_H_scroll_buff equ $ff0294
+_global_H_scroll_buff equ $ff0290
 ;dim planes_addr[3] as integer '0=0 1=1 2=Plane_Win
-_global_planes_addr equ $ff0614
+_global_planes_addr equ $ff0610
 ;dim sprite_table_addr as integer
-_global_sprite_table_addr equ $ff061a
+_global_sprite_table_addr equ $ff0616
 ;dim scroll_table_addr as integer
-_global_scroll_table_addr equ $ff061c
+_global_scroll_table_addr equ $ff0618
 ;dim vdp_conf_table_addr as long
-_global_vdp_conf_table_addr equ $ff061e
-;dim _print_cursor as integer
-_global__print_cursor equ $ff0622
-;dim _print_plane  as integer
-_global__print_plane equ $ff0624
-;dim _print_pallet as integer
-_global__print_pallet equ $ff0626
+_global_vdp_conf_table_addr equ $ff061a
 
 ;------------------------
 ;  Header Vector Table  -
@@ -69,132 +59,17 @@ _global__print_pallet equ $ff0626
     dc.l trap_15_vector
 
     ;imports"\system\genesis_header.asm" ' Header de uma ROM de mega Drive Padrao (deve ficar sempre no topo)
-    include "C:\workbench\Alcatech_NextBasicMC68000_IDE\utils\system\genesis_header.asm"
+    include "C:\work bench\Alcatech_NextBasicMC68000_IDE\utils\system\genesis_header.asm"
 
     ;std_init()
     bsr std_init
 
-    ;print_init()
-    bsr print_init
-
-    ;println("Pressione Start")
-    move.l #const_string_0_,-(a7)
-    bsr println
-    addq #4,a7
-
-    ;waitvb=0
-    move.w #0,_global_waitvb
-
-    ;enable_global_int()
-    bsr enable_global_int
-
     ;Do 'main
 lbl_do_1_start:
-
-    ;j = joypad6b_read(0)
-    move.w #0,-(a7)
-    bsr joypad6b_read
-    addq #2,a7
-    move.w d7,_global_j
-
-    ;  set_cursor_position(0,2)
-    move.w #2,-(a7)
-    move.w #0,-(a7)
-    bsr set_cursor_position
-    addq #4,a7
-
-    ;  print_var(j):print("      ")
-    move.w _global_j,-(a7)
-    bsr print_var
-    addq #2,a7
-
-    ;  print_var(j):print("      ")
-    move.l #const_string_1_,-(a7)
-    bsr print
-    addq #4,a7
-
-    ; if j.7 then
-    move.w _global_j,d0
-    btst #7,d0
-    sne d0
-    and.w #$01,d0
-    dbra d0,lbl_if_true_1
-    bra lbl_if_false_1
-lbl_if_true_1:
-
-    ;  if j.13 = j.7 then
-    move.w _global_j,d0
-    btst #13,d0
-    sne d0
-    and.w #$01,d0
-    move.w _global_j,d1
-    btst #7,d1
-    sne d1
-    and.w #$01,d1
-    cmp.w d1,d0
-    seq d0
-    and.w #$01,d0
-    dbra d0,lbl_if_true_2
-    bra lbl_if_false_2
-lbl_if_true_2:
-
-    ;   set_cursor_position(0,1)
-    move.w #1,-(a7)
-    move.w #0,-(a7)
-    bsr set_cursor_position
-    addq #4,a7
-
-    ;   print("Controle de 3 botoes")
-    move.l #const_string_2_,-(a7)
-    bsr print
-    addq #4,a7
-    bra lbl_if_end_2
-lbl_if_false_2:
-
-    ;  else
-
-    ;   set_cursor_position(0,1)
-    move.w #1,-(a7)
-    move.w #0,-(a7)
-    bsr set_cursor_position
-    addq #4,a7
-
-    ;   print("Controle de 6 botoes")
-    move.l #const_string_3_,-(a7)
-    bsr print
-    addq #4,a7
-lbl_if_end_2:
-    bra lbl_if_end_1
-lbl_if_false_1:
-lbl_if_end_1:
-
-    ;waitvb = 1
-    move.w #1,_global_waitvb
-
-    ;while(waitvb) : wend
-lbl_while_start_1:
-    tst.w _global_waitvb
-    bne lbl_while_true_1
-    bra lbl_while_false_1
-lbl_while_true_1:
-    bra lbl_while_start_1
-
-    ;while(waitvb) : wend
-lbl_while_false_1:
     bra lbl_do_1_start
 lbl_do_1_end:
 
     ;Loop ' Laco infinito
-
-    ;sub isr_06_vector()
-isr_06_vector:
-
-    ;waitvb=0
-    move.w #0,_global_waitvb
-
-    rte
-
-    ;end sub
 
     ;sub std_init()  
 std_init:
@@ -510,7 +385,8 @@ _local_jp set 8
     move.w (_local_jp,a6),D1
 
     ;_asm_block #__
-    	move.l  #$A10003,A0
+    	moveq #0,D0
+    move.l  #$A10003,A0
     add.w   D1,D1
 	add.w   D1,A0	
 	move.b  #$40,6(a0);(0xA10009)
@@ -529,9 +405,9 @@ _local_jp set 8
 	lsl.b	#$2,d1		
 	move.b	#$40,(a0)
 	or.b	d1,d0		
-	move.b  (A0),D1
+	move.b  (a0),D1
 	move.b  #0,(A0)
-	andi.w	#$3F, d1
+	ori.w	#$FFF0, d1
 	lsl.w	#8, d1
 	or.w    D1,D0
 	not.w   d0
@@ -1421,586 +1297,6 @@ _local_nframes set 8
     rts
 
     ;end sub
-
-    ;sub print_init()
-print_init:
-
-    ;load_tiles_DMA(addressof(font_lbl_prtn),256,0) ' Carrega a fonte na Vram
-    move.l #0,-(a7)
-    move.w #256,-(a7)
-    move.l #font_lbl_prtn,-(a7)
-    bsr load_tiles_DMA
-    lea 10(a7),a7
-
-    ;_print_cursor = 0
-    move.w #0,_global__print_cursor
-
-    ;_print_plane = 0
-    move.w #0,_global__print_plane
-
-    ;_print_pallet = 0
-    move.w #0,_global__print_pallet
-    rts
-
-    ;end sub
-
-    ;sub set_cursor_position(byval _print_cx_p as integer, byval _print_cy_p as integer)
-set_cursor_position:
-    link a6,#-0
-; byval _local__print_cx_p as word
-_local__print_cx_p set 8
-; byval _local__print_cy_p as word
-_local__print_cy_p set 10
-
-    ;_print_cursor = (_print_cx_p and 63) + ((_print_cy_p and 31) * 64) 
-    move.w (_local__print_cx_p,a6),d0
-    and.w #63,d0
-    move.w (_local__print_cy_p,a6),d1
-    and.w #31,d1
-    lsl.w #6,d1
-    add.w d1,d0
-    move.w d0,_global__print_cursor
-    unlk a6 
-    rts
-
-    ;end sub
-
-    ;sub set_text_plane(byval _print_plane_text as integer)
-set_text_plane:
-    link a6,#-0
-; byval _local__print_plane_text as word
-_local__print_plane_text set 8
-
-    ;_print_plane = _print_plane_text
-    move.w (_local__print_plane_text,a6),_global__print_plane
-    unlk a6 
-    rts
-
-    ;end sub
-
-    ;sub set_text_pal(byval _print_pal_set as integer)
-set_text_pal:
-    link a6,#-0
-; byval _local__print_pal_set as word
-_local__print_pal_set set 8
-
-    ;_print_pallet = _print_pal_set
-    move.w (_local__print_pal_set,a6),_global__print_pallet
-    unlk a6 
-    rts
-
-    ;end sub
-
-    ;sub print(byval _print_string as long)
-print:
-;  dim char as integer = peek(  _print_string as byte)
-_local_char set -2
-    link a6,#-2
-; byval _local__print_string as long
-_local__print_string set 8
-    move.l (_local__print_string,a6),a0
-    moveq #0,d0
-    move.b (a0),d0
-    move.w d0,(_local_char,a6)
-
-    ;  while(char<>0)
-lbl_while_start_2:
-    move.w (_local_char,a6),d0
-    tst.w d0
-    sne d0
-    and.w #$01,d0
-    dbra d0,lbl_while_true_2
-    bra lbl_while_false_2
-lbl_while_true_2:
-
-    ;  draw_tile(char OR _print_pallet, _print_cursor AND 63 , (_print_cursor / 64) ,_print_plane)
-    move.w _global__print_plane,-(a7)
-    move.w _global__print_cursor,d0
-    lsr.w #6,d0
-    move.w d0,-(a7)
-    move.w _global__print_cursor,d0
-    and.w #63,d0
-    move.w d0,-(a7)
-    move.w (_local_char,a6),d0
-    or.w _global__print_pallet,d0
-    move.w d0,-(a7)
-    bsr draw_tile
-    addq #8,a7
-
-    ;  _print_string +=1
-    moveq #1,d0
-    add.l d0,(_local__print_string,a6)
-
-    ;  _print_cursor +=1
-    moveq #1,d0
-    add.w d0,_global__print_cursor
-
-    ;  if _print_cursor > (64*32) then _print_cursor = 0
-    move.w _global__print_cursor,d0
-    cmp.w #(64*32),d0
-    shi d0
-    and.w #$01,d0
-    dbra d0,lbl_if_true_3
-    bra lbl_if_false_3
-lbl_if_true_3:
-
-    ;  if _print_cursor > (64*32) then _print_cursor = 0
-    move.w #0,_global__print_cursor
-lbl_if_false_3:
-
-    ;  char = peek(  _print_string as byte)
-    move.l (_local__print_string,a6),a0
-    moveq #0,d0
-    move.b (a0),d0
-    move.w d0,(_local_char,a6)
-    bra lbl_while_start_2
-
-    ;  end while
-lbl_while_false_2:
-    unlk a6 
-    rts
-
-    ;end sub
-
-    ;sub println(byval _print_string as long)
-println:
-;  dim char as integer = peek(  _print_string as byte)
-_local_char set -2
-    link a6,#-2
-; byval _local__print_string as long
-_local__print_string set 8
-    move.l (_local__print_string,a6),a0
-    moveq #0,d0
-    move.b (a0),d0
-    move.w d0,(_local_char,a6)
-
-    ;  while(char<>0)
-lbl_while_start_3:
-    move.w (_local_char,a6),d0
-    tst.w d0
-    sne d0
-    and.w #$01,d0
-    dbra d0,lbl_while_true_3
-    bra lbl_while_false_3
-lbl_while_true_3:
-
-    ;  draw_tile(char OR _print_pallet, _print_cursor AND 63 , (_print_cursor / 64) ,_print_plane)
-    move.w _global__print_plane,-(a7)
-    move.w _global__print_cursor,d0
-    lsr.w #6,d0
-    move.w d0,-(a7)
-    move.w _global__print_cursor,d0
-    and.w #63,d0
-    move.w d0,-(a7)
-    move.w (_local_char,a6),d0
-    or.w _global__print_pallet,d0
-    move.w d0,-(a7)
-    bsr draw_tile
-    addq #8,a7
-
-    ;  _print_string +=1
-    moveq #1,d0
-    add.l d0,(_local__print_string,a6)
-
-    ;  _print_cursor +=1
-    moveq #1,d0
-    add.w d0,_global__print_cursor
-
-    ;  if _print_cursor > (64*32) then _print_cursor = 0
-    move.w _global__print_cursor,d0
-    cmp.w #(64*32),d0
-    shi d0
-    and.w #$01,d0
-    dbra d0,lbl_if_true_4
-    bra lbl_if_false_4
-lbl_if_true_4:
-
-    ;  if _print_cursor > (64*32) then _print_cursor = 0
-    move.w #0,_global__print_cursor
-lbl_if_false_4:
-
-    ;  char = peek(  _print_string as byte)
-    move.l (_local__print_string,a6),a0
-    moveq #0,d0
-    move.b (a0),d0
-    move.w d0,(_local_char,a6)
-    bra lbl_while_start_3
-
-    ;  end while
-lbl_while_false_3:
-
-    ;  _print_cursor += 64 - (_print_cursor and 63) 
-    move.w _global__print_cursor,d1
-    and.w #63,d1
-    moveq #64,d0
-    sub.w d1,d0
-    add.w d0,_global__print_cursor
-    unlk a6 
-    rts
-
-    ;end sub
-
-    ;sub print_var(byval _print_val as integer)
-print_var:
-; dim flag_prnt as integer = 0
-_local_flag_prnt set -2
-; dim div_f as integer = 10000
-_local_div_f set -4
-; dim pars_ as integer
-_local_pars_ set -6
-    link a6,#-6
-; byval _local__print_val as word
-_local__print_val set 8
-
-    ; if _print_val = 0 then
-    move.w (_local__print_val,a6),d0
-    tst.w d0
-    seq d0
-    and.w #$01,d0
-    dbra d0,lbl_if_true_5
-    bra lbl_if_false_5
-lbl_if_true_5:
-
-    ; print("0") : return
-    move.l #const_string_4_,-(a7)
-    bsr print
-    addq #4,a7
-
-    ; print("0") : return
-    unlk a6 
-    rts
-    bra lbl_if_end_5
-lbl_if_false_5:
-lbl_if_end_5:
-    move.w #0,(_local_flag_prnt,a6)
-    move.w #10000,(_local_div_f,a6)
-
-    ; while(div_f)
-lbl_while_start_4:
-    tst.w (_local_div_f,a6)
-    bne lbl_while_true_4
-    bra lbl_while_false_4
-lbl_while_true_4:
-
-    ; pars_ = _print_val / div_f
-    moveq #0,d0
-    move.w (_local__print_val,a6),d0
-    divu (_local_div_f,a6),d0
-    move.w d0,(_local_pars_,a6)
-
-    ; if pars_ OR flag_prnt then
-    move.w (_local_pars_,a6),d0
-    or.w (_local_flag_prnt,a6),d0
-    dbra d0,lbl_if_true_6
-    bra lbl_if_false_6
-lbl_if_true_6:
-
-    ; flag_prnt = true
-    move.w #1,(_local_flag_prnt,a6)
-
-    ; draw_tile(((pars_+ &H30) OR _print_pallet), _print_cursor AND 63 , (_print_cursor / 64) ,_print_plane)
-    move.w _global__print_plane,-(a7)
-    move.w _global__print_cursor,d0
-    lsr.w #6,d0
-    move.w d0,-(a7)
-    move.w _global__print_cursor,d0
-    and.w #63,d0
-    move.w d0,-(a7)
-    move.w (_local_pars_,a6),d0
-    add.w #$30,d0
-    or.w _global__print_pallet,d0
-    move.w d0,-(a7)
-    bsr draw_tile
-    addq #8,a7
-
-    ; _print_cursor +=1
-    moveq #1,d0
-    add.w d0,_global__print_cursor
-
-    ; if _print_cursor > (64*32) then _print_cursor = 0
-    move.w _global__print_cursor,d0
-    cmp.w #(64*32),d0
-    shi d0
-    and.w #$01,d0
-    dbra d0,lbl_if_true_7
-    bra lbl_if_false_7
-lbl_if_true_7:
-
-    ; if _print_cursor > (64*32) then _print_cursor = 0
-    move.w #0,_global__print_cursor
-lbl_if_false_7:
-    bra lbl_if_end_6
-lbl_if_false_6:
-lbl_if_end_6:
-
-    ; _print_val -= pars_ * div_f
-    move.w (_local_pars_,a6),d0
-    mulu (_local_div_f,a6),d0
-    sub.w d0,(_local__print_val,a6)
-
-    ; div_f = div_f / 10
-    moveq #0,d0
-    move.w (_local_div_f,a6),d0
-    divu #10,d0
-    move.w d0,(_local_div_f,a6)
-    bra lbl_while_start_4
-
-    ; wend
-lbl_while_false_4:
-    unlk a6 
-    rts
-
-    ;end sub
-
-    ;sub print_signed(byval _print_val as signed integer)
-print_signed:
-    link a6,#-0
-; byval _local__print_val as word
-_local__print_val set 8
-
-    ; if _unsigned(_print_val > 32768) then 'Negativo
-    move.w (_local__print_val,a6),d0
-    cmp.w #32768,d0
-    shi d0
-    and.w #$01,d0
-    dbra d0,lbl_if_true_8
-    bra lbl_if_false_8
-lbl_if_true_8:
-
-    ; print("-")
-    move.l #const_string_5_,-(a7)
-    bsr print
-    addq #4,a7
-
-    ; print_var( (~_print_val) +1 )
-    move.w (_local__print_val,a6),d0
-    not.w d0
-    addq #1,d0
-    move.w d0,-(a7)
-    bsr print_var
-    addq #2,a7
-    bra lbl_if_end_8
-lbl_if_false_8:
-
-    ; else 'Positivo
-
-    ; print("+")
-    move.l #const_string_6_,-(a7)
-    bsr print
-    addq #4,a7
-
-    ; print_var( _print_val )
-    move.w (_local__print_val,a6),-(a7)
-    bsr print_var
-    addq #2,a7
-lbl_if_end_8:
-    unlk a6 
-    rts
-
-    ;end sub
-
-    ;sub print_hex(byval _print_val as long)
-print_hex:
-;  dim _parse_bf[9] as byte ' String local que vai armazenar o valor do Hex convertido para string
-_local__parse_bf set -10
-; Auto Declaracao variavel ->   for k = 0 to 8
-_local_k set -12
-    link a6,#-12
-; byval _local__print_val as long
-_local__print_val set 8
-
-    ;  for k = 0 to 8
-    moveq #0,d0
-    move.w d0,(_local_k,a6)
-lbl_for_4_start:
-    move.w (_local_k,a6),d0
-    cmp.w #8,d0
-    beq lbl_for_4_end
-
-    ;  _parse_bf[7-k] = _long( (_print_val AND (&hF << k*4))>>( k*4) )
-    moveq #7,d0
-    sub.w (_local_k,a6),d0
-    add.w #_local__parse_bf,d0
-    moveq #0,d2
-    move.w (_local_k,a6),d2
-    add.l d2,d2
-    add.l d2,d2
-    moveq #$F,d1
-    lsl.l d2,d1
-    and.l (_local__print_val,a6),d1
-    moveq #0,d2
-    move.w (_local_k,a6),d2
-    add.l d2,d2
-    add.l d2,d2
-    lsr.l d2,d1
-    move.b d1,0(a6,d0.w)
-
-    ;  if _byte(_parse_bf[7-k] > 9) then _parse_bf[7-k] += _char("7") else _parse_bf[7-k] += _char("0") 
-    moveq #7,d0
-    sub.w (_local_k,a6),d0
-    add.w #_local__parse_bf,d0
-    move.b 0(a6,d0.w),d1
-    cmp.b #9,d1
-    shi d1
-    and.b #$01,d1
-    tst.b d1
-    bne lbl_if_true_9
-    bra lbl_if_false_9
-lbl_if_true_9:
-
-    ;  if _byte(_parse_bf[7-k] > 9) then _parse_bf[7-k] += _char("7") else _parse_bf[7-k] += _char("0") 
-    moveq #7,d0
-    sub.w (_local_k,a6),d0
-    add.w #_local__parse_bf,d0
-    move.b #'7',d1
-    add.b d1,0(a6,d0.w)
-    bra lbl_if_end_9
-lbl_if_false_9:
-
-    ;  if _byte(_parse_bf[7-k] > 9) then _parse_bf[7-k] += _char("7") else _parse_bf[7-k] += _char("0") 
-    moveq #7,d0
-    sub.w (_local_k,a6),d0
-    add.w #_local__parse_bf,d0
-    move.b #'0',d1
-    add.b d1,0(a6,d0.w)
-lbl_if_end_9:
-    moveq #1,d0
-    add.w d0,(_local_k,a6)
-    bra lbl_for_4_start
-
-    ;  next k 
-lbl_for_4_end:
-
-    ;  _parse_bf[8] = 0 'Caractere Null - Fim de string
-    move.b #0,(_local__parse_bf+(8<<0),a6)
-
-    ;  print("0x")
-    move.l #const_string_7_,-(a7)
-    bsr print
-    addq #4,a7
-
-    ;  print(addressof(_parse_bf))
-    move.l a6,d0
-    add.l #_local__parse_bf,d0
-    move.l d0,-(a7)
-    bsr print
-    addq #4,a7
-    unlk a6 
-    rts
-
-    ;end sub
-
-    ;sub print_fixed(byval _print_val as fixed)
-print_fixed:
-    link a6,#-0
-; byval _local__print_val as word
-_local__print_val set 8
-
-    ;  print_var(_print_val)
-    move.w (_local__print_val,a6),d0
-    lsr.w #7,d0
-    move.w d0,-(a7)
-    bsr print_var
-    addq #2,a7
-
-    ;  print(".")
-    move.l #const_string_8_,-(a7)
-    bsr print
-    addq #4,a7
-
-    ;  _print_val = ( (_print_val and &H7F)<<7)  * 0.78125
-    move.w (_local__print_val,a6),d0
-    and.w #$7F,d0
-    lsl.w #7,d0
-    mulu #(100),d0
-    lsr.l #7,d0
-    move.w d0,(_local__print_val,a6)
-
-    ;  if _fixed(_print_val < 10) then print("0") 
-    move.w (_local__print_val,a6),d0
-    cmp.w #(1280),d0
-    scs d0
-    and.w #$01,d0
-    dbra d0,lbl_if_true_10
-    bra lbl_if_false_10
-lbl_if_true_10:
-
-    ;  if _fixed(_print_val < 10) then print("0") 
-    move.l #const_string_9_,-(a7)
-    bsr print
-    addq #4,a7
-lbl_if_false_10:
-
-    ;  print_var( _print_val)  
-    move.w (_local__print_val,a6),d0
-    lsr.w #7,d0
-    move.w d0,-(a7)
-    bsr print_var
-    addq #2,a7
-    unlk a6 
-    rts
-
-    ;end sub
-
-    ;sub print_signed_fixed(byval _print_val as fixed)  
-print_signed_fixed:
-    link a6,#-0
-; byval _local__print_val as word
-_local__print_val set 8
-
-    ;  if _unsigned(_print_val > 255) then 'Negativo
-    move.w (_local__print_val,a6),d0
-    lsr.w #7,d0
-    cmp.w #255,d0
-    shi d0
-    and.w #$01,d0
-    dbra d0,lbl_if_true_11
-    bra lbl_if_false_11
-lbl_if_true_11:
-
-    ;  print("-")
-    move.l #const_string_10_,-(a7)
-    bsr print
-    addq #4,a7
-
-    ;  print_fixed( (~(_print_val-0.01)) )
-    move.w (_local__print_val,a6),d0
-    sub.w #(1),d0
-    not.w d0
-    move.w d0,-(a7)
-    bsr print_fixed
-    addq #2,a7
-    bra lbl_if_end_11
-lbl_if_false_11:
-
-    ;  else 'Positivo
-
-    ;  print("+")
-    move.l #const_string_11_,-(a7)
-    bsr print
-    addq #4,a7
-
-    ;  print_fixed( _print_val )
-    move.w (_local__print_val,a6),-(a7)
-    bsr print_fixed
-    addq #2,a7
-lbl_if_end_11:
-    unlk a6 
-    rts
-
-    ; end sub
-    even
-const_string_0_:
-    dc.b "Pressione Start",0
-    even
-const_string_1_:
-    dc.b "      ",0
-    even
-const_string_2_:
-    dc.b "Controle de 3 botoes",0
-    even
-const_string_3_:
-    dc.b "Controle de 6 botoes",0
     even
 VDP_std_Reg_init:
     dc.b $04
@@ -2023,35 +1319,6 @@ VDP_std_Reg_init:
     dc.b $00
     dc.b $00
     dc.b $00
-    even
-const_string_4_:
-    dc.b "0",0
-    even
-const_string_5_:
-    dc.b "-",0
-    even
-const_string_6_:
-    dc.b "+",0
-    even
-const_string_7_:
-    dc.b "0x",0
-    even
-const_string_8_:
-    dc.b ".",0
-    even
-const_string_9_:
-    dc.b "0",0
-    even
-const_string_10_:
-    dc.b "-",0
-    even
-const_string_11_:
-    dc.b "+",0
-
-    ;imports "\system\font_msxBR_8x8.bin , -f , -e"
-    even
-font_lbl_prtn:
-    incbin "C:\workbench\Alcatech_NextBasicMC68000_IDE\utils\system\font_msxbr_8x8.bin " 
     even    
 isr_01_vector:
     rte
@@ -2062,6 +1329,8 @@ isr_03_vector:
 isr_04_vector:
     rte
 isr_05_vector:
+    rte
+isr_06_vector:
     rte
 isr_07_vector:
     rte

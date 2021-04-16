@@ -403,7 +403,8 @@ _local_jp set 8
     move.w (_local_jp,a6),D1
 
     ;_asm_block #__
-    	move.l  #$A10003,A0
+    	moveq #0,D0
+    move.l  #$A10003,A0
     add.w   D1,D1
 	add.w   D1,A0	
 	move.b  #$40,6(a0);(0xA10009)
@@ -422,9 +423,9 @@ _local_jp set 8
 	lsl.b	#$2,d1		
 	move.b	#$40,(a0)
 	or.b	d1,d0		
-	move.b  (A0),D1
+	move.b  (a0),D1
 	move.b  #0,(A0)
-	andi.w	#$0F, d1
+	ori.w	#$FFF0, d1
 	lsl.w	#8, d1
 	or.w    D1,D0
 	not.w   d0
@@ -1318,17 +1319,17 @@ _local_nframes set 8
     ;imports"\image1.bin"  ' Cada imagem ocupa cerca de 88Kbytes de Memoria
     even
 img1:
-    incbin "C:\Users\Alca_Tech\Desktop\NEXTBasic_Build_18_12_2020\Exemplos\Ex_direct_color_DMA\image1.bin" 
+    incbin "C:\workbench\Alcatech_NextBasicMC68000_IDE\Exemplos\Ex_direct_color_DMA\image1.bin" 
 
     ;imports"\image2.bin,-o 20000 "
     org $20000
 img2:
-    incbin "C:\Users\Alca_Tech\Desktop\NEXTBasic_Build_18_12_2020\Exemplos\Ex_direct_color_DMA\image2.bin" 
+    incbin "C:\workbench\Alcatech_NextBasicMC68000_IDE\Exemplos\Ex_direct_color_DMA\image2.bin" 
 
     ;imports"\image3.bin,-o 40000"
     org $40000
 img3:
-    incbin "C:\Users\Alca_Tech\Desktop\NEXTBasic_Build_18_12_2020\Exemplos\Ex_direct_color_DMA\image3.bin" 
+    incbin "C:\workbench\Alcatech_NextBasicMC68000_IDE\Exemplos\Ex_direct_color_DMA\image3.bin" 
     even
 VDP_std_Reg_init:
     dc.b $04

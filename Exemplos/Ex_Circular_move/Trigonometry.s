@@ -81,7 +81,7 @@ _global__print_pallet equ $ff0632
     dc.l trap_15_vector
 
     ;imports "\system\genesis_header.asm" ' Header de uma ROM de mega Drive Padrao (deve ficar sempre no topo)
-    include "C:\workbench\Alcatech_NextBasicMC68000_IDE\utils\system\genesis_header.asm"
+    include "C:\work bench\Alcatech_NextBasicMC68000_IDE\utils\system\genesis_header.asm"
 
     ;std_init()   'Inicializa o VDP
     bsr std_init
@@ -673,7 +673,8 @@ _local_jp set 8
     move.w (_local_jp,a6),D1
 
     ;_asm_block #__
-    	move.l  #$A10003,A0
+    	moveq #0,D0
+    move.l  #$A10003,A0
     add.w   D1,D1
 	add.w   D1,A0	
 	move.b  #$40,6(a0);(0xA10009)
@@ -692,9 +693,9 @@ _local_jp set 8
 	lsl.b	#$2,d1		
 	move.b	#$40,(a0)
 	or.b	d1,d0		
-	move.b  (A0),D1
+	move.b  (a0),D1
 	move.b  #0,(A0)
-	andi.w	#$0F, d1
+	ori.w	#$FFF0, d1
 	lsl.w	#8, d1
 	or.w    D1,D0
 	not.w   d0
@@ -2286,7 +2287,7 @@ const_string_15_:
     ;imports "\system\font_msxBR_8x8.bin , -f , -e"
     even
 font_lbl_prtn:
-    incbin "C:\workbench\Alcatech_NextBasicMC68000_IDE\utils\system\font_msxbr_8x8.bin " 
+    incbin "C:\work bench\Alcatech_NextBasicMC68000_IDE\utils\system\font_msxbr_8x8.bin " 
     even
 table_sin_fixed__:
     dc.w 0,1,3,5,6,8,9,12,13,14,15,17,19,20,22,23,24,27,28,29,31,32,35,36,37,38

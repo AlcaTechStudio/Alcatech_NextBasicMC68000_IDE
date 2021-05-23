@@ -42,9 +42,9 @@ Equal H_Flip     "&h800"
 Equal Priority_H "&h8000"
 
 ' Paletas de cores para tiles
-Equal palette_1 "1<<13"
-Equal palette_2 "2<<13"
-Equal palette_3 "3<<13"
+Equal palette_1 "(1<<13)"
+Equal palette_2 "(2<<13)"
+Equal palette_3 "(3<<13)"
 
 structure sprite_shape
 dim y         as integer

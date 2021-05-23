@@ -1,4 +1,4 @@
-import"\system\genesis_header.asm" ' Header de uma ROM de mega Drive Padrão (deve ficar sempre no topo)
+imports"\system\genesis_header.asm" ' Header de uma ROM de mega Drive Padrão (deve ficar sempre no topo)
 
 
 std_init()
@@ -8,7 +8,7 @@ load_cram_dma(addressof(paleta),16,0)
 
 for y = 0 to 14
  for x = 0 to 15
- draw_tile(x + (y*15) + 1, x+12,y+2, Plane_A)
+ draw_tile(x + (y*15) + 1, x+12,y+2, Plane_B)
  next 
 next  
 '[...] O que for colocado aqui sera executado apenas uma vez
@@ -48,16 +48,16 @@ end sub
 
 sub isr_Hblank() ' Interrupção Horizontal (scaling no Plano A)
 push(&hC00004   as long,  "A1" )
-push(&h40000010 as long, "(A1)")
+push(&h40000010+(2<<16) as long, "(A1)")
 push((pop( "4(A1)" as byte) * camZ)>>7 as word, "-4(A1)")
 end sub
 
 
 
-import"\system\genesis_std.nbs" ' Biblioteca contendo funções standard do Mega Drive
+imports"\system\genesis_std.nbs" ' Biblioteca contendo funções standard do Mega Drive
 
 paleta:
 	DATAINT	&h0000,&h0000,&h0644,&h0244,&h028C,&h0A66,&h0C88,&h0004
 	DATAINT	&h0CEE,&h0008,&h000C,&h0268,&h0246,&h0000,&h0000,&h0000
 tiles:
-import"\tiles.bin"	
+imports"\tiles.bin"	

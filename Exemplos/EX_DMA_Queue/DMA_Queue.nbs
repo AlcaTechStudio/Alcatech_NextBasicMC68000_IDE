@@ -1,0 +1,93 @@
+imports"\system\genesis_header.asm" ' Header de uma ROM de mega Drive Padrão 
+
+
+std_init()
+dma_Queue_init(80)
+dma_add_Queue(addressof(tiles),56,1)
+dma_add_Queue(addressof(tiles)+56*32,56,57)
+dma_add_Queue(addressof(tiles)+112*32,56,113)
+dma_CRAM_add_Queue(addressof(paleta),16,0)
+
+
+for y = 0 to 32
+ for x=0 to 64
+ draw_tile( peek(addressof(mapa) + (x<<1) + (y<<7) as word)+1, x , y , Plane_A)
+ next 
+next 
+
+
+x=0
+y=0
+
+' Ativa as interrupções Globais (interrupcao por Vblank aciona do Padrão)
+Enable_global_int()
+
+
+Do 'main
+  j = joypad6b_read(0)
+  
+  if lastj <> j AND j.btn_b = 1 then
+   ' Substituir tijolos Vermelhos por azuis usando DMA
+   dma_add_Queue(addressof(tiles)+4*32,1,6+1)
+    dma_add_Queue(addressof(tiles)+5*32,1,7+1)
+     dma_add_Queue(addressof(tiles)+88*32,1,90+1)
+      dma_add_Queue(addressof(tiles)+89*32,1,91+1)
+  
+  
+  else if lastj <> j AND j.btn_a = 1 then
+    ' Voltar tijolos Vermelhos a cor Original usando DMA
+   dma_add_Queue(addressof(tiles)+6*32,1,6+1)
+    dma_add_Queue(addressof(tiles)+7*32,1,7+1)
+     dma_add_Queue(addressof(tiles)+90*32,1,90+1)
+      dma_add_Queue(addressof(tiles)+91*32,1,91+1)
+  
+  end if
+  
+  
+  if bit_test(j, btn_left) then 
+  x -= 1
+  elseif bit_test(j, btn_right) then
+  x +=1  
+  end if
+  'Sempre que temos uma comparação < ou <= à Zero a variavel é tratada automaticamente como Signed
+  'Para usar uma variavel como signed em demais ocasiões escreva a expressão dentro da função _signed( )
+  if x <  0  then x = 0   ' Seria equivalente a x > 32767 numa variavel unsigned
+  if x > 192 then x = 192
+  
+  if bit_test(j, btn_up) then
+  y-=1
+  elseif bit_test(j, btn_down) then
+  y+=1  
+  end if
+  
+  if y < 0 then y = 0 
+  if y > 32    then y = 32
+  
+  lastJ  = j
+  
+  Set_HorizontalScroll_position(x AND 511,Plane_A)
+  Set_VerticalScroll_position(y AND 255,Plane_A)
+ 'Espera o proximo Vblank
+ vb_flag = 1
+ while(vb_flag) : wend 
+Loop ' Laço infinito
+
+sub isr_Vblank()
+ vb_flag = 0
+ DMA_Queue_Transfer()
+ update_sprite_table()
+end sub
+
+imports"\system\genesis_std.nbs" ' Biblioteca contendo funções standard do Mega Drives
+imports"\system\DMA_Queue.nbs"
+'Mapa 64x32
+mapa:
+imports"\mapa.bin"
+
+'168 Tiles
+tiles:
+imports"\tiles.bin"
+
+paleta:
+	DATAINT	&h0000,&h0000,&h00A0,&h0E22,&h0400,&h002C,&h0006,&h0EA2
+	DATAINT	&h02CE,&h0046,&h0040,&h0C0C,&h0606,&h0666,&h0660,&h0CEE

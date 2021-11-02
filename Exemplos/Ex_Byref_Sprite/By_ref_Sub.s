@@ -67,7 +67,7 @@ _global_vdp_conf_table_addr equ $ff062a
     dc.l trap_15_vector
 
     ;imports"\system\genesis_header.asm" ' header de uma rom padrao de mega drive (deve ficar sempre no inicio) 
-    include "C:\workbench\Alcatech_NextBasicMC68000_IDE\utils\system\genesis_header.asm"
+    include "C:\Users\Alca_Tech\Documents\Visual Studio 2010\Projects\Alca_Tech MC68000 NEXTBasic Compiler\Alca_Tech MC68000 NEXTBasic Compiler\bin\Debug\utils\system\genesis_header.asm"
 
     ;std_init()
     bsr std_init

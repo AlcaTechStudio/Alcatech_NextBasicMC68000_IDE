@@ -87,7 +87,7 @@ TwizBuffer equ $FFFF9400
     dc.l trap_15_vector
 
     ;imports "\system\genesis_header.asm" ' Header de uma ROM de mega Drive Padrao (deve ficar sempre no topo)
-    include "C:\workbench\Alcatech_NextBasicMC68000_IDE\utils\system\genesis_header.asm"
+    include "c:\Users\Alca_Tech\Desktop\Alcatech_NEXTBasic_VScode\resources\app\compiler\system\genesis_header.asm"
 
     ;std_init()   'Inicializa o VDP
     bsr std_init
@@ -102,7 +102,7 @@ TwizBuffer equ $FFFF9400
     bsr load_cram_DMA_128ksafe
     lea 10(a7),a7
 
-    ;twim_dec2VRAM(addressof(compressed_tiles), 256*32) 'Decompress and Load 232 tiles into Vram position 256
+    ;twim_dec2VRAM(addressof(compressed_tiles), 256*32) 
     move.w #(256*32),-(a7)
     move.l #compressed_tiles,-(a7)
     bsr twim_dec2VRAM
@@ -135,7 +135,7 @@ lbl_for_2_start:
     bra lbl_if_false_1
 lbl_if_true_1:
 
-    ;   draw_tile( ((x*4) + (y*28)+256) or 1<<13, (x<<1)   , (y<<1)+4, 0 )
+    ;   draw_tile( ((x*4) + (y*28)+256) or (1<<13), (x<<1)   , (y<<1)+4, 0 )
     move.w #0,-(a7)
     move.w _global_y,d0
     add.w d0,d0
@@ -156,7 +156,7 @@ lbl_if_true_1:
     bsr draw_tile
     addq #8,a7
 
-    ;   draw_tile( ((x*4) + (y*28)+257) or 1<<13, (x<<1)   , (y<<1)+5, 0 )
+    ;   draw_tile( ((x*4) + (y*28)+257) or (1<<13), (x<<1)   , (y<<1)+5, 0 )
     move.w #0,-(a7)
     move.w _global_y,d0
     add.w d0,d0
@@ -177,7 +177,7 @@ lbl_if_true_1:
     bsr draw_tile
     addq #8,a7
 
-    ;   draw_tile( ((x*4) + (y*28)+258) or 1<<13, (x<<1)+1 , (y<<1)+4, 0 )
+    ;   draw_tile( ((x*4) + (y*28)+258) or (1<<13), (x<<1)+1 , (y<<1)+4, 0 )
     move.w #0,-(a7)
     move.w _global_y,d0
     add.w d0,d0
@@ -199,7 +199,7 @@ lbl_if_true_1:
     bsr draw_tile
     addq #8,a7
 
-    ;   draw_tile( ((x*4) + (y*28)+259) or 1<<13, (x<<1)+1 , (y<<1)+5, 0 )
+    ;   draw_tile( ((x*4) + (y*28)+259) or (1<<13), (x<<1)+1 , (y<<1)+5, 0 )
     move.w #0,-(a7)
     move.w _global_y,d0
     add.w d0,d0
@@ -681,7 +681,8 @@ _local_jp set 8
     move.w (_local_jp,a6),D1
 
     ;_asm_block #__
-    	move.l  #$A10003,A0
+    	moveq #0,D0
+    move.l  #$A10003,A0
     add.w   D1,D1
 	add.w   D1,A0	
 	move.b  #$40,6(a0);(0xA10009)
@@ -700,9 +701,9 @@ _local_jp set 8
 	lsl.b	#$2,d1		
 	move.b	#$40,(a0)
 	or.b	d1,d0		
-	move.b  (A0),D1
+	move.b  (a0),D1
 	move.b  #0,(A0)
-	andi.w	#$0F, d1
+	ori.w	#$FFF0, d1
 	lsl.w	#8, d1
 	or.w    D1,D0
 	not.w   d0
@@ -2235,18 +2236,18 @@ _local___data__dest_ set 12
     ;end sub
 
     ;imports "\system\twizzler_algorithm.asm"
-    include "C:\workbench\Alcatech_NextBasicMC68000_IDE\utils\system\twizzler_algorithm.asm"
+    include "c:\Users\Alca_Tech\Desktop\Alcatech_NEXTBasic_VScode\resources\app\compiler\system\twizzler_algorithm.asm"
 
     ;imports"\assets\tile_set.twim"
     even
 compressed_tiles:
-    incbin "C:\workbench\Alcatech_NextBasicMC68000_IDE\Exemplos\Ex_Twizzler_Data_Compression\assets\tile_set.twim" 
+    incbin "c:\Users\Alca_Tech\Desktop\Alcatech_NEXTBasic_VScode\Exemplos_MegaDrive\Ex_Twizzler_Data_Compression\assets\tile_set.twim" 
 compressed_tiles_end:
 
     ;imports"\assets\tile_set.bin"	
     even
 uncompressed_tiles:
-    incbin "C:\workbench\Alcatech_NextBasicMC68000_IDE\Exemplos\Ex_Twizzler_Data_Compression\assets\tile_set.bin" 
+    incbin "c:\Users\Alca_Tech\Desktop\Alcatech_NEXTBasic_VScode\Exemplos_MegaDrive\Ex_Twizzler_Data_Compression\assets\tile_set.bin" 
 uncompressed_tiles_end:
     even
 const_string_0_:
@@ -2316,7 +2317,7 @@ const_string_13_:
     ;imports "\system\font_msxBR_8x8.bin , -f , -e"
     even
 font_lbl_prtn:
-    incbin "C:\workbench\Alcatech_NextBasicMC68000_IDE\utils\system\font_msxbr_8x8.bin " 
+    incbin "c:\Users\Alca_Tech\Desktop\Alcatech_NEXTBasic_VScode\resources\app\compiler\system\font_msxbr_8x8.bin " 
     even
 paletatiles:
     dc.w $0000,$00A0,$0E22,$0400,$002C,$0006,$0EA2,$02CE

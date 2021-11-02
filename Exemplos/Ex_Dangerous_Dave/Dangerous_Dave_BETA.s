@@ -93,7 +93,7 @@ _global_vdp_conf_table_addr equ $ff296a
     dc.l trap_15_vector
 
     ;imports"\system\genesis_header.asm" ' Header de uma ROM de mega Drive Padrao (deve ficar sempre no topo)
-    include "C:\workbench\Alcatech_NextBasicMC68000_IDE\utils\system\genesis_header.asm"
+    include "c:\Users\Alca_Tech\Desktop\Alcatech_NEXTBasic_VScode\Alcatech_NEXTBasic_VScode\resources\app\compiler\system\genesis_header.asm"
 
     ;std_init()
     bsr std_init
@@ -592,7 +592,7 @@ _local_unidade set -8
     swap d0
     move.w d0,(_local_unidade,a6)
 
-    ; draw_tile( ( centena+241 ) or 3<<13 , 37 , 21 , 0)
+    ; draw_tile( ( centena+241 ) or (3<<13) , 37 , 21 , 0)
     move.w #0,-(a7)
     move.w #21,-(a7)
     move.w #37,-(a7)
@@ -603,7 +603,7 @@ _local_unidade set -8
     bsr draw_tile
     addq #8,a7
 
-    ; draw_tile( (  dezena+241 ) or 3<<13 , 38 , 21 , 0)
+    ; draw_tile( (  dezena+241 ) or (3<<13) , 38 , 21 , 0)
     move.w #0,-(a7)
     move.w #21,-(a7)
     move.w #38,-(a7)
@@ -614,7 +614,7 @@ _local_unidade set -8
     bsr draw_tile
     addq #8,a7
 
-    ; draw_tile( ( unidade+241 ) or 3<<13 , 39 , 21 , 0)
+    ; draw_tile( ( unidade+241 ) or (3<<13) , 39 , 21 , 0)
     move.w #0,-(a7)
     move.w #21,-(a7)
     move.w #39,-(a7)
@@ -667,7 +667,7 @@ _local_unidade set -8
     swap d0
     move.w d0,(_local_unidade,a6)
 
-    ; draw_tile( ( centena+241 ) or 3<<13 , 35 , 20 , 0)
+    ; draw_tile( ( centena+241 ) or (3<<13) , 35 , 20 , 0)
     move.w #0,-(a7)
     move.w #20,-(a7)
     move.w #35,-(a7)
@@ -678,7 +678,7 @@ _local_unidade set -8
     bsr draw_tile
     addq #8,a7
 
-    ; draw_tile( (  dezena+241 ) or 3<<13 , 36 , 20 , 0)
+    ; draw_tile( (  dezena+241 ) or (3<<13) , 36 , 20 , 0)
     move.w #0,-(a7)
     move.w #20,-(a7)
     move.w #36,-(a7)
@@ -689,7 +689,7 @@ _local_unidade set -8
     bsr draw_tile
     addq #8,a7
 
-    ; draw_tile( ( unidade+241 ) or 3<<13 , 37 , 20 , 0)
+    ; draw_tile( ( unidade+241 ) or (3<<13) , 37 , 20 , 0)
     move.w #0,-(a7)
     move.w #20,-(a7)
     move.w #37,-(a7)
@@ -700,7 +700,7 @@ _local_unidade set -8
     bsr draw_tile
     addq #8,a7
 
-    ; draw_tile(             241 or 3<<13 , 38 , 20 , 0)
+    ; draw_tile(             241 or (3<<13) , 38 , 20 , 0)
     move.w #0,-(a7)
     move.w #20,-(a7)
     move.w #38,-(a7)
@@ -708,7 +708,7 @@ _local_unidade set -8
     bsr draw_tile
     addq #8,a7
 
-    ; draw_tile(             241 or 3<<13 , 39 , 20 , 0)
+    ; draw_tile(             241 or (3<<13) , 39 , 20 , 0)
     move.w #0,-(a7)
     move.w #20,-(a7)
     move.w #39,-(a7)
@@ -925,7 +925,7 @@ lbl_for_5_start:
     addq #1,d1
     move.w d1,0(a0,d0.w)
 
-    ; if _ram_map_[k] <= 37 then _ram_map_[k] |= 1<<13 'Se o tile for menor que 37 ele deve ser desenhado com a paleta 01 da Cram
+    ; if _ram_map_[k] <= 37 then _ram_map_[k] |= (1<<13) 'Se o tile for menor que 37 ele deve ser desenhado com a paleta 01 da Cram
     move.w (_local_k,a6),d0
     add.w d0,d0
     move.l (_local__ram_map_,a6),a0
@@ -937,7 +937,7 @@ lbl_for_5_start:
     bra lbl_if_false_11
 lbl_if_true_11:
 
-    ; if _ram_map_[k] <= 37 then _ram_map_[k] |= 1<<13 'Se o tile for menor que 37 ele deve ser desenhado com a paleta 01 da Cram
+    ; if _ram_map_[k] <= 37 then _ram_map_[k] |= (1<<13) 'Se o tile for menor que 37 ele deve ser desenhado com a paleta 01 da Cram
     move.w (_local_k,a6),d0
     add.w d0,d0
     move.l (_local__ram_map_,a6),a0
@@ -2470,7 +2470,7 @@ lbl_elseif_true_44:
     lea _global_tile_map_ram,a0
     move.w #0,0(a0,d0.w)
 
-    ;  draw_tile(1 or 1<<13,4,20,0) 
+    ;  draw_tile(1 or (1<<13),4,20,0) 
     move.w #0,-(a7)
     move.w #20,-(a7)
     move.w #4,-(a7)
@@ -2478,7 +2478,7 @@ lbl_elseif_true_44:
     bsr draw_tile
     addq #8,a7
 
-    ;  draw_tile(2 or 1<<13,4,21,0)
+    ;  draw_tile(2 or (1<<13),4,21,0)
     move.w #0,-(a7)
     move.w #21,-(a7)
     move.w #4,-(a7)
@@ -2486,7 +2486,7 @@ lbl_elseif_true_44:
     bsr draw_tile
     addq #8,a7
 
-    ;  draw_tile(3 or 1<<13,5,20,0)
+    ;  draw_tile(3 or (1<<13),5,20,0)
     move.w #0,-(a7)
     move.w #20,-(a7)
     move.w #5,-(a7)
@@ -2494,7 +2494,7 @@ lbl_elseif_true_44:
     bsr draw_tile
     addq #8,a7
 
-    ;  draw_tile(4 or 1<<13,5,21,0) 
+    ;  draw_tile(4 or (1<<13),5,21,0) 
     move.w #0,-(a7)
     move.w #21,-(a7)
     move.w #5,-(a7)
@@ -3916,67 +3916,67 @@ _local_nframes set 8
     ;imports"\assets\tile_sets\numbers.bin"
     even
 numeros:
-    incbin "C:\workbench\Alcatech_NextBasicMC68000_IDE\Exemplos\Ex_Dangerous_Dave\assets\tile_sets\numbers.bin" 
+    incbin "c:\Users\Alca_Tech\Desktop\Exemplos\Ex_Dangerous_Dave\assets\tile_sets\numbers.bin" 
 
     ;imports"\assets\tile_sets\tilepal1.bin"
     even
 tiles:
-    incbin "C:\workbench\Alcatech_NextBasicMC68000_IDE\Exemplos\Ex_Dangerous_Dave\assets\tile_sets\tilepal1.bin" 
+    incbin "c:\Users\Alca_Tech\Desktop\Exemplos\Ex_Dangerous_Dave\assets\tile_sets\tilepal1.bin" 
 
     ;imports"\assets\tile_sets\tilepal0.bin"	
     even
-    incbin "C:\workbench\Alcatech_NextBasicMC68000_IDE\Exemplos\Ex_Dangerous_Dave\assets\tile_sets\tilepal0.bin" 
+    incbin "c:\Users\Alca_Tech\Desktop\Exemplos\Ex_Dangerous_Dave\assets\tile_sets\tilepal0.bin" 
 
     ;imports"\assets\sprite_sheets\dave.bin"
     even
 dave_data:
-    incbin "C:\workbench\Alcatech_NextBasicMC68000_IDE\Exemplos\Ex_Dangerous_Dave\assets\sprite_sheets\dave.bin" 
+    incbin "c:\Users\Alca_Tech\Desktop\Exemplos\Ex_Dangerous_Dave\assets\sprite_sheets\dave.bin" 
 
     ;imports"\assets\tile_maps\level1.bin"
     even
 levels_:
-    incbin "C:\workbench\Alcatech_NextBasicMC68000_IDE\Exemplos\Ex_Dangerous_Dave\assets\tile_maps\level1.bin" 
+    incbin "c:\Users\Alca_Tech\Desktop\Exemplos\Ex_Dangerous_Dave\assets\tile_maps\level1.bin" 
 
     ;imports"\assets\tile_maps\level2.bin"
     even
-    incbin "C:\workbench\Alcatech_NextBasicMC68000_IDE\Exemplos\Ex_Dangerous_Dave\assets\tile_maps\level2.bin" 
+    incbin "c:\Users\Alca_Tech\Desktop\Exemplos\Ex_Dangerous_Dave\assets\tile_maps\level2.bin" 
 
     ;imports"\assets\tile_maps\level3.bin"
     even
-    incbin "C:\workbench\Alcatech_NextBasicMC68000_IDE\Exemplos\Ex_Dangerous_Dave\assets\tile_maps\level3.bin" 
+    incbin "c:\Users\Alca_Tech\Desktop\Exemplos\Ex_Dangerous_Dave\assets\tile_maps\level3.bin" 
 
     ;imports"\assets\tile_maps\level4.bin"
     even
-    incbin "C:\workbench\Alcatech_NextBasicMC68000_IDE\Exemplos\Ex_Dangerous_Dave\assets\tile_maps\level4.bin" 
+    incbin "c:\Users\Alca_Tech\Desktop\Exemplos\Ex_Dangerous_Dave\assets\tile_maps\level4.bin" 
 
     ;imports"\assets\tile_maps\level5.bin"
     even
-    incbin "C:\workbench\Alcatech_NextBasicMC68000_IDE\Exemplos\Ex_Dangerous_Dave\assets\tile_maps\level5.bin" 
+    incbin "c:\Users\Alca_Tech\Desktop\Exemplos\Ex_Dangerous_Dave\assets\tile_maps\level5.bin" 
 
     ;imports"\assets\tile_maps\level6.bin"
     even
-    incbin "C:\workbench\Alcatech_NextBasicMC68000_IDE\Exemplos\Ex_Dangerous_Dave\assets\tile_maps\level6.bin" 
+    incbin "c:\Users\Alca_Tech\Desktop\Exemplos\Ex_Dangerous_Dave\assets\tile_maps\level6.bin" 
 
     ;imports"\assets\tile_maps\level7.bin"
     even
-    incbin "C:\workbench\Alcatech_NextBasicMC68000_IDE\Exemplos\Ex_Dangerous_Dave\assets\tile_maps\level7.bin" 
+    incbin "c:\Users\Alca_Tech\Desktop\Exemplos\Ex_Dangerous_Dave\assets\tile_maps\level7.bin" 
 
     ;imports"\assets\tile_maps\level8.bin"
     even
-    incbin "C:\workbench\Alcatech_NextBasicMC68000_IDE\Exemplos\Ex_Dangerous_Dave\assets\tile_maps\level8.bin" 
+    incbin "c:\Users\Alca_Tech\Desktop\Exemplos\Ex_Dangerous_Dave\assets\tile_maps\level8.bin" 
 
     ;imports"\assets\tile_maps\level9.bin"
     even
-    incbin "C:\workbench\Alcatech_NextBasicMC68000_IDE\Exemplos\Ex_Dangerous_Dave\assets\tile_maps\level9.bin" 
+    incbin "c:\Users\Alca_Tech\Desktop\Exemplos\Ex_Dangerous_Dave\assets\tile_maps\level9.bin" 
 
     ;imports"\assets\tile_maps\level10.bin"
     even
-    incbin "C:\workbench\Alcatech_NextBasicMC68000_IDE\Exemplos\Ex_Dangerous_Dave\assets\tile_maps\level10.bin" 
+    incbin "c:\Users\Alca_Tech\Desktop\Exemplos\Ex_Dangerous_Dave\assets\tile_maps\level10.bin" 
 
     ;imports"\assets\colision_map\colision_maps.bin"
     even
 colision_map:
-    incbin "C:\workbench\Alcatech_NextBasicMC68000_IDE\Exemplos\Ex_Dangerous_Dave\assets\colision_map\colision_maps.bin" 
+    incbin "c:\Users\Alca_Tech\Desktop\Exemplos\Ex_Dangerous_Dave\assets\colision_map\colision_maps.bin" 
     even
 VDP_std_Reg_init:
     dc.b $04

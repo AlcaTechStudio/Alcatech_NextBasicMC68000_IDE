@@ -80,29 +80,15 @@ _global___DMA_queue_buff_addr__ equ $ff062c
     ;std_init()
     bsr std_init
 
-    ;dma_Queue_init(80)
-    move.w #80,-(a7)
+    ;dma_Queue_init(10)
+    move.w #10,-(a7)
     bsr dma_Queue_init
     addq #2,a7
 
-    ;dma_add_Queue(addressof(tiles),56,1)
+    ;dma_add_Queue(addressof(tiles),168,1) 'Adiciona na Fila de DMA a tranferencia de 168 Tiles copiados para a posicao 1 da VRAM
     move.l #1,-(a7)
-    move.w #56,-(a7)
+    move.w #168,-(a7)
     move.l #tiles,-(a7)
-    bsr dma_add_Queue
-    lea 10(a7),a7
-
-    ;dma_add_Queue(addressof(tiles)+56*32,56,57)
-    move.l #57,-(a7)
-    move.w #56,-(a7)
-    move.l #(tiles+(56*32)),-(a7)
-    bsr dma_add_Queue
-    lea 10(a7),a7
-
-    ;dma_add_Queue(addressof(tiles)+112*32,56,113)
-    move.l #113,-(a7)
-    move.w #56,-(a7)
-    move.l #(tiles+(112*32)),-(a7)
     bsr dma_add_Queue
     lea 10(a7),a7
 
@@ -431,10 +417,10 @@ isr_06_vector:
     ; vb_flag = 0
     move.w #0,_global_vb_flag
 
-    ; DMA_Queue_Transfer()
+    ; DMA_Queue_Transfer() ' Realiza todas as transferencias de DMA na fila
     bsr DMA_Queue_Transfer
 
-    ; update_sprite_table()
+    ; update_sprite_table() 'Atualiza a Sprite Table
     bsr update_sprite_table
 
     movem.l (a7)+,d0-d6/a0-a5

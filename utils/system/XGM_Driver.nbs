@@ -3,7 +3,8 @@
  dim xgmReady    as integer 
  dim xgmTempo as integer
  dim xgmTempoDef as integer
-
+ dim xgmsample_ID_table[&h100] as byte
+ 
     sysreg VDP_DATA  as integer at &hC00000
     Sysreg VDP_CTRL  as integer at &hC00004
     Sysreg Z80_HALT  as integer at &hA11100
@@ -176,7 +177,7 @@ _asm_block #__
     btst    #8,D0                   ; Z80 halted ?
     bne     @z80_wait1              ; not yet, wait..
 
-    lea  end_global_table,a0                   ; a0 = reserved $FC array for sample id table
+    lea  _global_xgmsample_ID_table,a0                   ; a0 = reserved $FC array for sample id table
     moveq   #0,d0
      
 @loop:                              ; prepare sample id table

@@ -2,10 +2,8 @@ imports"\system\genesis_header.asm" ' Header de uma ROM de mega Drive Padrão
 
 
 std_init()
-dma_Queue_init(80)
-dma_add_Queue(addressof(tiles),56,1)
-dma_add_Queue(addressof(tiles)+56*32,56,57)
-dma_add_Queue(addressof(tiles)+112*32,56,113)
+dma_Queue_init(10)
+dma_add_Queue(addressof(tiles),168,1) 'Adiciona na Fila de DMA a tranferencia de 168 Tiles copiados para a posição 1 da VRAM
 dma_CRAM_add_Queue(addressof(paleta),16,0)
 
 
@@ -74,8 +72,8 @@ Loop ' Laço infinito
 
 sub isr_Vblank()
  vb_flag = 0
- DMA_Queue_Transfer()
- update_sprite_table()
+ DMA_Queue_Transfer() ' Realiza todas as transferencias de DMA na fila
+ update_sprite_table() 'Atualiza a Sprite Table
 end sub
 
 imports"\system\genesis_std.nbs" ' Biblioteca contendo funções standard do Mega Drives

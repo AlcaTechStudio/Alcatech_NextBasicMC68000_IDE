@@ -1,0 +1,173 @@
+imports"\system\genesis_header.asm" ' Header de uma ROM de mega Drive Padrão (deve ficar sempre no topo)
+' Variaveis Globais'
+dim vb_flag as integer
+dim joy_buttons as integer
+dim last_joybtn as integer
+dim VscrollA[224] as integer
+dim lineDisplay as byte
+
+dim top_hill  as signed fixed 
+dim botom_hil as signed fixed 
+dim sline as integer = 100
+' Inicialização das Bibliotecas'
+std_init()
+print_init()
+set_text_plane(Plane_A)
+set_text_pal(palette_1)
+' Carrega os dados da pista pra Vram
+load_tiles_dma(addressof(road_tiledata),90,256)
+load_cram_dma(addressof(road_pal),32,0)
+' Desenha a pista'
+for y = 0 to 28
+ for x = 0 to 64
+ draw_tile(peek(addressof(road_tilemap) + ((x + (y*64))*2) as word) +256, x,y, Plane_B)
+ next 
+next  
+' Centraliza a tela na posição horizontal'
+Set_HorizontalScroll_position(((512-320)/2),Plane_B) ' Centraliza a posição de Scroll Horizontal
+' Renderiza a pista pela primeira Vez'
+renderiza_pista(top_hill,botom_hil,sline)
+
+' Interrupção Vertical (ativado por default)
+Enable_H_int()      ' Ativa Interrupção horizontal
+set_hint_counter(0) ' Interrupção vai ocorrer em todas as scanlines
+enable_global_int() ' Ativa interrupções Globais
+
+Do 'main
+
+    joy_buttons = joypad6b_read(0)
+
+    if last_joybtn <> joy_buttons then
+        if joy_buttons.btn_up then
+            top_hill += 0.007
+        elseif joy_buttons.btn_down then
+            top_hill -= 0.007
+        end if
+
+        if joy_buttons.btn_left then
+            botom_hil += 0.007
+        elseif joy_buttons.btn_right then
+            botom_hil -= 0.007
+        end if
+
+        if joy_buttons.btn_a then
+            sline += 1
+        elseif joy_buttons.btn_b then
+            sline -= 1
+        end if
+
+        renderiza_pista(top_hill,botom_hil,sline)
+    end if
+
+    last_joybtn = joy_buttons
+    vb_flag=1
+    while(vb_flag) : wend
+
+Loop ' Laço infinito
+
+
+sub renderiza_pista(byval dy1 as signed fixed, byval dy2 as signed fixed, byval segmentline as integer)
+    
+    dim current_drawing_pos as signed fixed = 223.0
+    dim horizon_line as integer = 223
+
+    dim dy as signed fixed = dy1
+    dim ddy as signed fixed = 0.0
+
+    for bgy = 223 to 115 step -1
+
+        dim cdp as integer = current_drawing_pos 'O compilador ja faz o casting automatico de fixed pra integer
+        
+        if bgy = segmentline then dy = dy2
+
+        if cdp <= horizon_line then
+            VscrollA[cdp] = bgy - cdp
+            horizon_line = cdp
+        end if
+
+        ddy += dy
+
+        dim delta_drawing_pos as signed fixed = ddy + 1.0
+        dim next_drawing_pos  as signed fixed = current_drawing_pos - delta_drawing_pos 
+        dim ndp as integer = next_drawing_pos
+
+        if (cdp - ndp > 1) then
+            while(cdp > ndp)
+                cdp -= 1
+                if (cdp <= horizon_line) then
+                    VscrollA[cdp] = bgy - cdp
+                    horizon_line = cdp
+                end if
+            wend
+        end if 
+        current_drawing_pos = next_drawing_pos
+    next
+
+    dim h as signed integer = horizon_line-1
+    while (h >= 16)
+        h-=1
+        VscrollA[h] = -h
+    wend
+
+' Print Debug Data'
+set_cursor_position(0,1)
+print("Dist_Y1:        ")  
+set_cursor_position(8,1)
+print_signed_fixed(top_hill)
+set_cursor_position(0,2)
+print("Dist_Y2:        ")  
+set_cursor_position(8,2)
+print_signed_fixed(botom_hil)
+set_cursor_position(0,3)
+print("SegLine:        ")  
+set_cursor_position(8,3)
+print_var(sline)
+end sub
+
+' Interrupção Vertical
+sub isr_Vblank() 
+    lineDisplay = 0
+    vb_flag = 0 ' Limpa o Flag de interrupção Vertical (marca o inicio do proximo frame)
+end sub
+
+' Interrupção Horizontal (scaling no Plano A)
+sub isr_Hblank() 
+_asm_block #__
+    movem.l d0-d1/a0,-(a7)
+
+    moveq #0,d0
+    moveq #0,d1
+    move.b _global_lineDisplay,d1
+    add.w d1,d1
+    lea _global_VscrollA,a0
+    move.w 0(a0,d1.w),D0
+
+    lea $C00004,a0
+
+    moveq #2,d1
+    and.w #$3FF,D0 ;Resto de divisão por 1023
+    swap D1
+    add.l #$40000010,D1
+    move.l D1,(a0)
+    move.w D0,-4(a0)
+
+    moveq #1,d0
+    add.b d0,_global_lineDisplay
+
+    movem.l (a7)+,d0-d1/a0
+__# _asm_block_end
+end sub
+
+imports "\system\genesis_std.nbs" ' Biblioteca contendo as funções standard do Mega Drive
+imports "\system\print_lib.nbs"   ' Biblioteca contendo as funções print para o Mega Drive
+road_pal:
+	DATAINT	&h0CC6,&h0CC6,&h0282,&h0228,&h0666,&h0EEE,&h0000,&h0000
+	DATAINT	&h0000,&h0000,&h0000,&h0000,&h0000,&h0000,&h0000,&h0000
+	DATAINT	&h0000,&h0000,&h0000,&h0000,&h0000,&h0000,&h0000,&h0000 ' Pallet for Printed Text
+	DATAINT	&h0000,&h0000,&h0000,&h0000,&h0000,&h0000,&h0000,&h0000
+road_tilemap:
+imports"\data\road_tilemap.bin"
+
+road_tiledata:
+imports "\data\road_tiles.bin"
+

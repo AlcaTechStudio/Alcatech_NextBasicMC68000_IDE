@@ -1,0 +1,128 @@
+imports"\system\genesis_header.asm" ' Header de uma ROM de mega Drive Padrão (deve ficar sempre no topo)
+
+' Constantes contendo o tamanho do sprite(em pixels) e do tile map(em tiles)'
+equal altura_sprite  "7"
+equal largura_sprite "7"
+equal altura_mapa    "8"
+equal largura_mapa   "23"
+
+
+dim flag_vbl as integer
+dim colpoint_H as integer
+dim colpoint_V as integer
+
+std_init()   'Inicializa o VDP
+print_init() 'Carrega a fonte para a VRAM
+
+dim X_acel as signed integer = 0
+dim Y_acel as signed integer = 0
+dim Sprite_xpos as integer = 128 + (2*8)
+dim sprite_ypos as integer = 128 + (6*8)
+
+set_cursor_position(0,19)
+println("Pontos testados p/ colisao:")
+println("                           ...x....")
+println("                           ........")
+println("                           ........")
+println("                           x......x")
+println("                           ........")
+println("                           ........")
+println("                           ........")
+println("                           ...x....") 
+
+'Inicializa o Sprite
+set_sprite_size(0,0,0)
+set_sprite_gfx(0,2,0)
+
+
+'Desenha a tela'
+for y = 0 to 8
+ for x = 0 to 23
+ draw_tile((peek(addressof(tile_map) + (x + (y*23)) as byte)), x,y, Plane_A)
+ next x
+next y
+'[...] O que for colocado aqui sera executado apenas uma vez
+enable_global_int()
+Do 'main
+
+ joy = joypad6b_read(0)
+ 
+ 'Zera variaveis de aceleracao'
+ X_acel = 0
+ Y_acel = 0
+
+ 'Testa os inputs do joystick'
+ if bit_test(joy, btn_Right) then
+   X_acel+=1
+ elseif bit_test(joy, btn_Left) then
+   X_acel-=1
+ end if
+ if bit_test(joy, btn_Up) then
+   Y_acel -= 1
+ elseif bit_test(joy, btn_Down) then
+   Y_acel +=1
+ end if
+
+ ''''''''''''' Pega o ponto de colisão Horizontal'''''''''''''
+ ytiles = (((Sprite_ypos+(altura_sprite/2)) -128)/8) * largura_mapa ' coordenada Y do ponto'
+
+ if X_acel < 0 then 'Indo para tras'
+    xtiles = (((Sprite_xpos+X_acel) -128)/8)    
+ else  ' Indo para frente ou parado'
+    xtiles = (((Sprite_xpos+X_acel+largura_sprite) -128)/8)
+ end if
+  colpoint_H =  peek( addressof(tile_map) + xtiles + ytiles  as byte)
+
+ ''''''''''''''''''' Pega o ponto de colisão Vertical'''''''''
+ xtiles = (((Sprite_xpos+(largura_sprite/2)) -128)/8) ' Coordenada X do ponto'
+
+ if Y_acel < 0 then 'Indo para cima ->'
+    ytiles = (((Sprite_ypos+Y_acel) -128)/8) * largura_mapa
+ else  ' Indo para cima ou parado'
+    ytiles = (((Sprite_ypos+Y_acel+altura_sprite) -128)/8) * largura_mapa
+ end if
+  colpoint_V =  peek( addressof(tile_map) + xtiles + ytiles  as byte)
+
+ '''''''''''''' Testa os pontos de Colisao ''''''''''''''''''
+ if colpoint_H then X_acel = 0
+ if colpoint_V then Y_acel = 0
+
+'Atualiza a posicao do Sprite'
+Sprite_xpos += X_acel
+Sprite_ypos += Y_acel
+set_sprite_position(0,Sprite_xpos,Sprite_ypos)
+
+set_cursor_position(0,10)
+print("X_pixel: ")  : print_var(Sprite_xpos) : print("     ")
+set_cursor_position(0,11)
+print("Y_pixel: ") : print_var(Sprite_ypos) : print("     ")
+set_cursor_position(0,12)
+print("X_Colpt: ")  : print_var(colpoint_H)  : print("     ")
+set_cursor_position(0,13)
+print("Y_Colpt: ")  : print_var(colpoint_V)  : print("     ")
+
+'Limita o Frame Rate'
+flag_vbl = 1
+while(flag_vbl) : wend
+
+Loop ' Laço infinito
+
+
+sub isr_Vblank()
+update_sprite_table()
+flag_vbl = 0
+end sub
+
+
+imports "\system\genesis_std.nbs" ' Biblioteca contendo funções standard do Mega Drive
+imports "\system\print_lib.nbs"
+
+tile_map:
+ DATA 8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8
+ DATA 8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8
+ DATA 8,0,0,0,8,8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8
+ DATA 8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8,8,8,0,0,0,8
+ DATA 8,0,0,0,0,0,0,0,0,0,8,8,0,0,0,0,0,0,0,0,0,0,8
+ DATA 8,0,0,0,8,8,8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8
+ DATA 8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8
+ DATA 8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8

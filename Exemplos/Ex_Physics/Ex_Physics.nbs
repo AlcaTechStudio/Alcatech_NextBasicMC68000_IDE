@@ -1,0 +1,130 @@
+imports"\system\genesis_header.asm" ' Header de uma ROM de mega Drive Padrão (deve ficar sempre no topo)
+
+equal Gravidade  "0.03"
+equal Aceleracao "0.05"
+equal friccao    "0.92"
+
+equal altura_sprite  "7"
+equal largura_sprite "7"
+equal largura_mapa   "23"
+
+structure _player
+ dim x as signed fixed
+ dim y as signed fixed
+ dim vx as signed fixed
+ dim vy as signed fixed
+ dim colpX_offset as integer
+ dim colpy_offset as integer
+end structure
+
+dim player1 as new _player
+
+std_init()
+print_init()
+
+'Inicializa o Sprite
+set_sprite_size(0,0,0)
+set_sprite_gfx(0,2,0)
+player1.x = 2*8
+player1.y = 5*8
+'Desenha a tela'
+for y = 0 to 8
+ for x = 0 to 23
+ draw_tile((peek(addressof(tile_map) + (x + (y* largura_mapa)) as byte)), x,y, Plane_A)
+ next x
+next y
+
+
+
+'[...] O que for colocado aqui sera executado apenas uma vez
+enable_global_int()
+
+dim jump_rpt as integer = 0
+
+Do 'main
+
+ ' Forcas dissipativas
+ player1.vx *= friccao
+ player1.vy += Gravidade
+ player1.vy *= 0.95
+ 
+ 'Le o input do Joystick
+ joy = joypad6b_read(0)
+ 
+ 'Aceleracao no Eixo X
+ if bit_test(joy, btn_Right) then
+   player1.vx+=Aceleracao
+ elseif bit_test(joy, btn_Left) then
+   player1.vx-=Aceleracao
+ end if
+ 'Aceleracao no eixo Y'
+ if bit_test(joy, btn_Up) then ' Pulo'
+  if jump_rpt < 15 then ' Pula mais alto caso o botão seja pressionado por mais tempo'
+    player1.vy-=0.15
+    jump_rpt+=1
+  end if
+ else
+  jump_rpt = 0
+ end if
+ ' Checa a Colisao Horizontal
+ player1.x += player1.vx
+ if get_colision(player1.x,player1.y) then
+  player1.x -= player1.vx
+ end if
+ ' Checa a Colisao Vertical
+ player1.y += player1.vy
+  if get_colision(player1.x,player1.y) then
+  player1.y -= player1.vy
+ end if
+
+set_sprite_position(0,128+player1.x ,128+player1.y )
+
+set_cursor_position(0,10)
+print("X_pixel: ")  : print_var(player1.x) : print("     ")
+set_cursor_position(0,11)
+print("Y_pixel: ")  : print_var(player1.y) : print("     ")
+set_cursor_position(0,12)
+print("X_vel  : ")  : print_signed_fixed(player1.vx)  : print("     ")
+set_cursor_position(0,13)
+print("Y_vel  : ")  : print_signed_fixed(player1.vy)  : print("     ")
+
+
+'Limita o Frame Rate'
+flag_vbl = 1
+while(flag_vbl) : wend
+
+Loop ' Laço infinito
+
+sub isr_Vblank()
+update_sprite_table()
+flag_vbl = 0
+end sub
+
+' Retorna True caso algum vertice do Sprite toque um tile que não seja Zero
+function get_colision(byval x_p as integer, byval y_p as integer) as integer
+
+  if peek(addressof(tile_map) + x_p/8 + ((y_p/8) * largura_mapa) as byte) then 'Diagonal Superior Esquerda do Sprite'
+   return 1
+  else if peek(addressof(tile_map) + (x_p+largura_sprite)/8 + ((y_p/8) * largura_mapa) as byte) then 'Diagonal Superior Direita do Sprite'
+   return 1
+  else if peek(addressof(tile_map) + x_p/8 + (((y_p+altura_sprite)/8) * largura_mapa) as byte) then 'Diagonal inferior Esquerda do Sprite'
+   return 1
+  else if peek(addressof(tile_map) + (x_p+largura_sprite)/8 + (((y_p+altura_sprite)/8) * largura_mapa) as byte) then 'Diagonal inferior direita do Sprite'
+   return 1
+  end if
+
+  return 0
+end function
+
+imports"\system\genesis_std.nbs" ' Biblioteca contendo funções standard do Mega Drive
+imports "\system\print_lib.nbs"
+
+tile_map:
+ DATA 8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8
+ DATA 8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8
+ DATA 8,0,0,0,8,8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8
+ DATA 8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8,8,8,0,0,0,8
+ DATA 8,0,0,0,0,0,0,0,0,0,8,8,0,0,0,0,0,0,0,0,0,0,8
+ DATA 8,0,0,0,8,8,8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8
+ DATA 8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8
+ DATA 8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8

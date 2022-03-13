@@ -1,0 +1,50 @@
+imports"\system\genesis_header.asm" ' Header de uma ROM de mega Drive Padrão (deve ficar sempre no topo)
+
+Equal Map_height "16"
+Equal Map_width  "20"
+
+std_init()
+print_init()
+
+'[...] O que for colocado aqui sera executado apenas uma vez
+
+'First Half'
+for y=0 to Map_height
+    for x=0 to Map_width
+    draw_tile( peek(addressof(tile_map) + ((x + (y*Map_width))*2) as word), x,y, Plane_A)
+    next y
+next y
+'Mirrored Half'
+for y=0 to Map_height
+    for x=0 to Map_width
+    draw_tile( peek(addressof(tile_map) + (((y*Map_width) + ((Map_width-1)-x))*2) as word) or H_flip, x+(Map_width),y, Plane_A)
+    next y
+next y
+
+
+
+Do 'main
+
+
+Loop ' Laço infinito
+
+tile_map: '20x15 Mirrored 40x15'
+dataint 62,62,62,62,62,62,62,62,62,62,62,62,62,62,62,62,62,62,62,22
+dataint 62,62, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,22
+dataint 62, 0,62, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,22
+dataint 62, 0, 0,62, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,22
+dataint 62, 0, 0, 0,62, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,22
+dataint 62, 0, 0, 0, 0,62, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,22
+dataint 62, 0, 0, 0, 0, 0,62, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,22
+dataint 62, 0, 0, 0, 0, 0, 0,62,62,62,62,62,62,62,62,62,62,62,62,22
+dataint 62, 0, 0, 0, 0, 0, 0,62,62,62,62,62,62,62,62,62,62,62,62,22
+dataint 62, 0, 0, 0, 0, 0,62, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,22
+dataint 62, 0, 0, 0, 0,62, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,22
+dataint 62, 0, 0, 0,62, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,22
+dataint 62, 0, 0,62, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,22
+dataint 62, 0,62, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,22
+dataint 62,62, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,22
+dataint 62,62,62,62,62,62,62,62,62,62,62,62,62,62,62,62,62,62,62,22
+
+imports"\system\genesis_std.nbs" ' Biblioteca contendo funções standard do Mega Drive
+imports"\system\print_lib.nbs"
